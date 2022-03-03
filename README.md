@@ -1,5 +1,6 @@
 # CSC_GIF_Gas_analysis
 CSC GIF Gas chromatography study 
+Original reference : https://twiki.cern.ch/twiki/bin/view/CMS/GCanalysisSoft
 
 ##### setup the environment first
 ```

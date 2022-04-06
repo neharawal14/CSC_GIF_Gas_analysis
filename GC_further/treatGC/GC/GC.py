@@ -92,7 +92,7 @@ class GSset(object):
     def setPeakName(self,name,column,nPeak,peakName):
         if nPeak == -1:
             nPeak = len(self.gcsets[name].peaks[column])
-            for i in range(nPeak):
+            for i in range(nPeak-1):
                 self.gcsets[name].peakNames[column][i] = peakName[i]
 
         else:
@@ -135,19 +135,19 @@ class GSset(object):
             return
         self.gcsets[name].getIntegral_modified(column)
     
-    def getPeakValley(self, name, column,peakName):
-        if not (name in self.gcsets.keys()) or not(column in self.gcsets[name].graphs.keys()):
-             print "can't find ", name, ", column ", column, " in data; doing nothing"
-             return  
-        self.gcsets[name].getPeakValley(column)
-        self.first_valley_x_value = self.gcsets[name].valley_x_value 
-        self.first_valley_y_value = self.gcsets[name].valley_y_value 
-        self.first_peak_x_value = self.gcsets[name].peak_x_value 
-        self.first_peak_y_value = self.gcsets[name].peak_y_value 
-        print "first peak : x and y "
-        print  self.first_peak_x_value, " ", self.first_peak_y_value
-        print "first valley : x and y "
-        print  self.first_valley_x_value, " ", self.first_valley_y_value
+#    def getPeakValley(self, name, column,peakName):
+#        if not (name in self.gcsets.keys()) or not(column in self.gcsets[name].graphs.keys()):
+#             print "can't find ", name, ", column ", column, " in data; doing nothing"
+#             return  
+#        self.gcsets[name].getPeakValley(column)
+#        self.first_valley_x_value = self.gcsets[name].valley_x_value 
+#        self.first_valley_y_value = self.gcsets[name].valley_y_value 
+#        self.first_peak_x_value = self.gcsets[name].peak_x_value 
+#        self.first_peak_y_value = self.gcsets[name].peak_y_value 
+#        print "first peak : x and y "
+#        print  self.first_peak_x_value, " ", self.first_peak_y_value
+#        print "first valley : x and y "
+#        print  self.first_valley_x_value, " ", self.first_valley_y_value
 
     def plotDrift(self,column):
         fnames = sorted(self.gcsets.keys())
@@ -291,6 +291,8 @@ class GSset(object):
         self.gcsets[name].multi[column].Add(self.gcsets[name].graphs[column],"pl")
         
         maxI = len(str(round(max(self.gcsets[name].integrals[column]),2)))
+        #if npPeaks == 3: loop_times = npPeaks-1
+        #else: loop_times = npPeaks
         for i in range(npPeaks):
             self.gcsets[name].multi[column].Add(gPeak[i],"p")
             logMulti.Add(gnPeak[i],"p")

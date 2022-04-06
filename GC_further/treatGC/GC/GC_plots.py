@@ -186,6 +186,7 @@ class plots(object):
         npWidth_ref = len(self.gcsets[name_ref].width[column_ref])
         for i in range(npWidth_org):
             iV_org=self.gcsets[name_org].width[column_org][i][2]
+            print"the valley points final org", self.gcsets[name_org].width[column_org][i][2]
             gWidth_org.SetPoint(i,x_org[iV_org],y_org[iV_org]);gnWidth_org.SetPoint(i,xn_org[iV_org],yn_org[iV_org])
         gWidth_org.SetMarkerColor(3);gnWidth_org.SetMarkerColor(3)
         gWidth_org.SetMarkerSize(2);gnWidth_org.SetMarkerSize(2)
@@ -198,7 +199,9 @@ class plots(object):
         self.gcsets[name_org].multi[column_org].Add(self.gcsets[name_org].graphs[column_org])
         
         maxI_org = len(str(round(max(self.gcsets[name_org].integrals[column_org]),2)))
-        for i in range(npPeaks_org):
+        if npPeaks_org == 3: loop_times_org = npPeaks_org-1
+        else: loop_times_org = npPeaks_org
+        for i in range(loop_times_org):
             self.gcsets[name_org].multi[column_org].Add(gPeak_org[i],"p")
             logMulti_org.Add(gnPeak_org[i],"p")
 
@@ -231,6 +234,7 @@ class plots(object):
         npWidth_ref = len(self.gcsets[name_ref].width[column_ref])
         for i in range(npWidth_ref):
             iV_ref=self.gcsets[name_ref].width[column_ref][i][2]
+            print"the valley points final", self.gcsets[name_ref].width[column_ref][i][2]
             gWidth_ref.SetPoint(i,x_ref[iV_ref],y_ref[iV_ref]);gnWidth_ref.SetPoint(i,xn_ref[iV_ref],yn_ref[iV_ref])
         gWidth_ref.SetMarkerColor(28);gnWidth_ref.SetMarkerColor(28)
         gWidth_ref.SetMarkerSize(2);gnWidth_ref.SetMarkerSize(2)
@@ -245,7 +249,10 @@ class plots(object):
 #        self.gcsets[name_ref].multi[column_ref].SetMarkerColor(2)
         self.gcsets[name_ref].graphs[column_ref].SetMarkerColor(2) 
         maxI_ref = len(str(round(max(self.gcsets[name_ref].integrals[column_ref]),2)))
-        for i in range(npPeaks_ref):
+        if npPeaks_ref == 3: loop_times_ref = npPeaks_ref-1
+        else: loop_times_ref = npPeaks_ref
+
+        for i in range(loop_times_ref):
             self.gcsets[name_ref].multi[column_ref].Add(gPeak_ref[i],"p")
             logMulti_ref.Add(gnPeak_ref[i],"p")
 
@@ -286,7 +293,7 @@ class plots(object):
         Plot_name.Add(self.gcsets[name_ref].multi[column_ref])
         Plot_name.Draw("ap")
         Plot_name.GetXaxis().SetRangeUser(0.2,0.8)
-        Plot_name.GetYaxis().SetRangeUser(100,10000000)
+        Plot_name.GetYaxis().SetRangeUser(100,2500000)
 #        cmp_plot.GetYaxis().SetRangeUser(self.gcsets[name_org].multi[column_org].GetYaxis().GetXmin(),self.gcsets[name_org].multi[column_org].GetYaxis().GetXmax())
 #        cmp_plot.GetYaxis().SetRangeUser(0,self.gcsets[name_org].multi[column_org].GetYaxis().GetXmax())
         #Set range to zoom in on peaks for columns B and C, could probably be changed to use the user defined x range
@@ -380,6 +387,10 @@ class plots(object):
 #            l.Draw()
 #            self.canvases[oldcname].Update()
 
+    def evaluate_integral(self, name_org,name_ref, column):
+
+        self.gcsets[name_org].getIntegral_modified(column)
+        self.gcsets[name_ref].getIntegral_modified(column)
 
             
     def shiftGC_baseline(self, name_org,name_ref, column):
@@ -389,6 +400,9 @@ class plots(object):
          peak_ref=self.gcsets[name_ref].peaks[column][0][2]
          valley_org=self.gcsets[name_org].width[column][0][2]
          valley_ref=self.gcsets[name_ref].width[column][0][2]
+
+         valley_ref_second = self.gcsets[name_ref].width[column][1][2]
+         valley_org_second = self.gcsets[name_org].width[column][1][2]
 
          # values of graphs 
          x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
@@ -411,17 +425,16 @@ class plots(object):
          print"shift valley ref graph", shift_valley_ref_graphs
 
 
-
          print " np in plot org_ref function org ",npn_org
          print " np in plot org_ref function ref ",npn_ref
 
          print"shift valley org avgraph" ,shift_valley_org_avgraphs
          print"shift valley ref avgraph", shift_valley_ref_avgraphs
 
-         print" printing x[i] - y[i] values  graphs org before shifting avgraphs"
+         print" printing x[i] - y[i] values  graphs org before shifting "
          for i in range(2000,2010):
           print "({},{})".format(x_org[i], y_org[i])
-         print" printing x[i] - y[i] values graphs ref before shifting avgraphs"
+         print" printing x[i] - y[i] values graphs ref before shifting "
          for i in range(2000,2010):
           print "({},{})".format(x_ref[i], y_ref[i])
  
@@ -433,6 +446,13 @@ class plots(object):
           print "({},{})".format(xn_ref[i], yn_ref[i])
  
 
+         print" printing x[i] - y[i] values between first valley and second valley graphs org before shifting"
+         for i in range(valley_org, valley_org_second):
+          print "({},{})".format(x_org[i], y_org[i])
+         print" printing x[i] - y[i] values graphs ref between first valley and second valley before shifting"
+         for i in range(valley_ref, valley_ref_second):
+          print "({},{})".format(x_ref[i], y_ref[i])
+ 
          # since yn_org  already declared from before and so it is fine to use it here directly
          if not(name_org in self.gcsets.keys()) or not (column in self.gcsets[name_org].graphs.keys()):
              print "can't find ", name_org, ", column ", column, " in data; doing nothing"
@@ -445,49 +465,174 @@ class plots(object):
          self.gcsets[name_ref].shiftGraph(column, shift_valley_ref_graphs, shift_valley_ref_avgraphs)
  
     def scaleGC_first_peak(self, name_org,name_ref, column):
-                   # to evaulate the value to shift 
+          # to evaulate the value to shift 
           # first peak and first valley
          peak_org=self.gcsets[name_org].peaks[column][0][2]
          peak_ref=self.gcsets[name_ref].peaks[column][0][2]
          valley_org=self.gcsets[name_org].width[column][0][2]
          valley_ref=self.gcsets[name_ref].width[column][0][2]
 
+         valley_ref_second = self.gcsets[name_ref].width[column][1][2]
+         valley_org_second = self.gcsets[name_org].width[column][1][2]
+ 
+         x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
+         x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
+
          xn_org,yn_org,npn_org=self.gcsets[name_org].avgraphs[column].GetX(),self.gcsets[name_org].avgraphs[column].GetY(),self.gcsets[name_org].avgraphs[column].GetN()
          xn_ref,yn_ref,npn_ref=self.gcsets[name_ref].avgraphs[column].GetX(),self.gcsets[name_ref].avgraphs[column].GetY(),self.gcsets[name_ref].avgraphs[column].GetN()
-        # shift_peak_org = yn_org[peak_org] - 500.0
-         shift_peak_ref = (yn_org[peak_ref]/yn_ref[peak_ref])
+         print " before scaling Ar peak"
+         print"i values at peak org and ref : ",peak_org,"  ",peak_ref
+         print"x values at peak org and ref : ",x_org[peak_org],"  ",x_ref[peak_ref]
+         print"y values at peak org and ref : ",y_org[peak_org],"  ",y_ref[peak_ref]
+
+         # for first peak and first valley
+         y_peak_org_graphs = y_org[peak_org]
+         y_base_org_graphs = y_org[valley_org]
+         x_peak_org_graphs = x_org[peak_org]
+         x_base_org_graphs = x_org[valley_org]
+
+
+         y_peak_org_avgraphs = yn_org[peak_org]
+         y_base_org_avgraphs = yn_org[valley_org]
+         x_peak_org_avgraphs = xn_org[peak_org]
+         x_base_org_avgraphs = xn_org[valley_org]
+
+#         y_peak_ref_graphs = y_ref[peak_ref]
+#         y_base_ref_graphs = y_ref[valley_ref]
+#         x_peak_ref_graphs = x_ref[peak_ref]
+#         x_base_ref_graphs = x_ref[valley_ref]
+#
+#
+#         y_peak_ref_avgraphs = yn_ref[peak_ref]
+#         y_base_ref_avgraphs = yn_ref[vallley_ref]
+#         x_peak_ref_avgraphs = xn_ref[peak_ref]
+#         x_base_ref_avgraphs = xn_ref[vallley_ref]
+
+
+       
+         # scaling each point on ref curve to make comparable to the 
+
 
          print " np in plot org_ref function org ",npn_org
          print " np in plot org_ref function ref ",npn_ref
 
-         print"scale peak org" ,shift_valley_org
-         print"shift valley ref", shift_valley_ref
+         print" peak org x , y ({},{})".format(x_peak_org_graphs,y_peak_org_graphs)
+         print" valley org x , y ({},{})".format(x_base_org_graphs,y_base_org_graphs)
 
-         print" printing x[i] - y[i] values avg graphs org before scaling , shifted once to baseline"
+         print" peak ref x , y ({},{})".format(x_ref[peak_ref],y_ref[peak_ref])
+         print" valley ref x , y ({},{})".format(x_ref[valley_ref],y_ref[valley_ref])
+
+         print" peak org avg x , y ({},{})".format(x_peak_org_avgraphs,y_peak_org_avgraphs)
+         print" valley org avg x , y ({},{})".format(x_base_org_avgraphs,y_base_org_avgraphs)
+
+         print" peak ref avg x , y ({},{})".format(xn_ref[peak_ref],yn_ref[peak_ref])
+         print" valley ref avg x , y ({},{})".format(xn_ref[valley_ref],yn_ref[valley_ref])
+
+
+
+         print" printing x[i] - y[i] values  graphs org before scaling , shifted once to baseline"
          for i in range(2000,2010):
-          print "({},{})".format(xn_org[i], yn_org[i])
-         print" printing x[i] - y[i] values avg graphs ref before scaling, shifted once to baseline"
+          print "({},{})".format(x_org[i], y_org[i])
+         print" printing x[i] - y[i] values  graphs ref before scaling, shifted once to baseline"
          for i in range(2000,2010):
-          print "({},{})".format(xn_ref[i], yn_ref[i])
+          print "({},{})".format(x_ref[i], y_ref[i])
  
-
-         # since yn_org  already declared from before and so it is fine to use it here directly
-         if not(name_org in self.gcsets.keys()) or not (column in self.gcsets[name_org].graphs.keys()):
-             print "can't find ", name_org, ", column ", column, " in data; doing nothing"
-             return
-         self.gcsets[name_org].shiftGraph(column, shift_valley_org)
-
+         print" printing x[i] - y[i] values  graphs org between first valley and second valley before scaling , shifted once to baseline"
+         for i in range(valley_org, valley_org_second):
+          print "({},{})".format(x_org[i], y_org[i])
+         print" printing x[i] - y[i] values  graphs ref between first valley and second valley before scaling, shifted once to baseline"
+         for i in range(valley_ref, valley_ref_second):
+          print "({},{})".format(x_ref[i], y_ref[i])
+         # since we need to only scale reference curve
          if not(name_ref in self.gcsets.keys()) or not (column in self.gcsets[name_ref].graphs.keys()):
              print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
              return
-         self.gcsets[name_ref].shiftGraph(column, shift_valley_ref)
+         self.gcsets[name_ref].scaleGC_peakAr(column, y_peak_org_graphs, y_base_org_graphs, y_peak_org_avgraphs, y_base_org_avgraphs,peak_ref, valley_ref, valley_ref_second)
  
-    def scaleGCx(self, name_org, name_ref, column):
-         if not(name_org in self.gcsets.keys()) or not (column in self.gcsets[name_org].graphs.keys()):
-             print "can't find ", name_org, ", column ", column, " in data; doing nothing"
-             return
-         self.gcsets[name_org].scaleGraphx(column, value) 
+    def shiftGC_x(self, name_org, name_ref, column):
+         peak_org=self.gcsets[name_org].peaks[column][0][2]
+         peak_ref=self.gcsets[name_ref].peaks[column][0][2]
+         valley_org=self.gcsets[name_org].width[column][0][2]
+         valley_ref=self.gcsets[name_ref].width[column][0][2]
+
+         valley_ref_second = self.gcsets[name_ref].width[column][1][2]
+         valley_org_second = self.gcsets[name_org].width[column][1][2]
+ 
+         x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
+         x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
+
+         xn_org,yn_org,npn_org=self.gcsets[name_org].avgraphs[column].GetX(),self.gcsets[name_org].avgraphs[column].GetY(),self.gcsets[name_org].avgraphs[column].GetN()
+         xn_ref,yn_ref,npn_ref=self.gcsets[name_ref].avgraphs[column].GetX(),self.gcsets[name_ref].avgraphs[column].GetY(),self.gcsets[name_ref].avgraphs[column].GetN()
+ 
+         print" x, y values for org curve"
+         for tmp1 in range(valley_org,valley_org_second):
+           print"({},{})".format(x_org[tmp1], y_org[tmp1]),
+
+         print" x, y values for ref curve"
+         for tmp2 in range(valley_ref,valley_ref_second):
+           print"({},{})".format(x_ref[tmp2], y_ref[tmp2]),
+
+         print"i values at peak org and ref : ",peak_org,"  ",peak_ref
+         print"x values at peak org and ref : ",x_org[peak_org],"  ",x_ref[peak_ref]
+         print"y values at peak org and ref : ",y_org[peak_org],"  ",y_ref[peak_ref]
+         shift_value = x_org[peak_org] - x_ref[peak_ref]
+         print"values by which Ar ref peak shifted along X ",shift_value
          if not(name_ref in self.gcsets.keys()) or not (column in self.gcsets[name_ref].graphs.keys()):
              print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
              return
-         self.gcsets[name_ref].scaleGraphx(column, value) 
+         self.gcsets[name_ref].shiftGC_peakAr(column, shift_value, valley_ref, valley_ref_second) 
+
+         x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
+         xn_ref,yn_ref,npn_ref=self.gcsets[name_ref].avgraphs[column].GetX(),self.gcsets[name_ref].avgraphs[column].GetY(),self.gcsets[name_ref].avgraphs[column].GetN()
+         
+#         valley_ref = valley_ref + (peak_org - peak_ref)
+#         peak_ref  = peak_ref + (peak_org-peak_ref)
+         # shift we define to just check chi-square
+         shift_i_value = peak_org-peak_ref
+         print "shift_i _value ", shift_i_value
+         chi_square = 0 
+         length_range = 0
+         for i in range(valley_ref, peak_ref+shift_i_value): 
+           length_range+=1
+           print"y_ref and y_org",y_ref[i-shift_i_value]," -  ",y_org[i]
+           chi_square = chi_square+ (pow((y_ref[i-shift_i_value] - y_org[i]),2)/y_org[i])
+           print"chi_square ",chi_square
+         print " total chi square ",chi_square 
+         chi_square_ndf = chi_square/(length_range -1)
+         print"chi_square per ndf ",chi_square_ndf 
+
+         #changing the peak and valley for Ar peak according to the shift: we can run setPeak function again, but it will be too much maybe so I am just changing the peak and valley position by knowing the shift to make
+
+         print"i values at peak  ref, valley, second valley : ",peak_ref,"  ",valley_ref, "  ",valley_ref_second
+#         self.gcsets[name_ref].peaks[column][0][1] = x_ref[peak_ref]+ (shift_value)
+#         self.gcsets[name_ref].width[column][0][1] = x_ref[valley_ref]+ (shift_value)
+#         self.gcsets[name_ref].width[column][1][1] = x_ref[valley_ref_second] + (shift_value)
+#         self.gcsets[name_ref].peaks[column][0][2] = peak_ref - (shift_i_value)
+#         self.gcsets[name_ref].width[column][0][2] = valley_ref - (shift_i_value)
+#         self.gcsets[name_ref].width[column][1][2] = valley_ref_second - (shift_i_value)
+
+# lets change the peak reference point also since it is confusing in last
+           
+
+#
+#        # evaluating chi-square
+#
+#         new_peak_x_ref = self.gcsets[name_ref].peaks[column][0][2]
+#         new_valley_x_ref = self.gcsets[name_ref].width[column][0][2]
+#         new_valley_second_x_ref = self.gcsets[name_ref].width[column][1][2]
+
+#         print " new peak points , valley, second valley points", new_peak_x_ref, " ", new_valley_x_ref, " ", new_valley_second_x_ref
+         # print ref curve peak x and y value after scaling Ar peak
+         print"ref curve peak value after scaling x- y"
+         print"({},{})".format(x_ref[peak_ref],y_ref[peak_ref])
+
+
+         print"peak reference curves"
+         print" (i,x,y) : ({},{},{}) ".format(peak_ref, x_ref[peak_ref], y_ref[peak_ref])
+         print"valley reference curves"
+         print" (i,x,y) : ({},{},{}) ".format(valley_ref, x_ref[valley_ref], y_ref[valley_ref])
+         print"second valley reference curves"
+         print" (i,x,y) : ({},{},{}) ".format(valley_ref_second, x_ref[valley_ref_second], y_ref[valley_ref_second])
+
+    def setPeak_positions_ref(self,name_ref, column,x_range):
+        self.gcsets[name_ref].setPeak(column,x_range)

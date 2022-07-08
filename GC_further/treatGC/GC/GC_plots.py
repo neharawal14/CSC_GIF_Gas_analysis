@@ -35,15 +35,40 @@ class plots(object):
         Constructor
         '''
 
-        self.gcsets    = {};
-        self.canvases  = {};
-        self.graphcount= {};
-        self.legends   = {};
+        self.gcsets    = {}
+        self.canvases  = {}
+        self.graphcount= {}
+        self.legends   = {}
         #graphsets = {};
         self.colours = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
         self.colours_ref = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
         self.ncolours = 6
+ 
+ 
+        self.gPeak_org = [] #Used to overlay on raw GC data
+        self.gnPeak_org= [] #Used to overlay on normalized GC data
+        self.gPeak_ref = [] #Used to overlay on raw GC data
+        self.gnPeak_ref= [] #Used to overlay on normalized GC data
+        #Fill Peak Width points to be overlayed on the GC graphs
+        self.gWidth_org = TGraph() #Used to overlay on raw GC data
+        self.gnWidth_org = TGraph() # Used to overlay on normalized GC data
+        self.gWidth_ref = TGraph() #Used to overlay on raw GC data
+        self.gnWidth_ref = TGraph() # Used to overlay on normalized GC data
+        self.logMulti_org=TMultiGraph()
+        self.logMulti_ref=TMultiGraph()
 
+        self.gWidth_ref = TGraph() #Used to overlay on raw GC data
+        self.gnWidth_ref = TGraph() # Used to overlay on normalized GC data
+        self.gWidth_ref = TGraph() #Used to overlay on raw GC data
+        self.gnWidth_ref = TGraph() # Used to overlay on normalized GC data
+
+        self.Plot_name = TMultiGraph() 
+        self.output='Plot_cmpfirst.root'
+        self.rfile = TFile(self.output,"RECREATE")
+        cname="cmpfirst"
+        self.canvases[cname] = TCanvas(cname, cname, 1200, 800)
+        self.c2=TCanvas(cname+"_logY","c2",1200,800)
+        self.logMulti_all= TMultiGraph()
 #        self.output='Plot_comparison.root'
 #        temp=TFile(self.output,"RECREATE")
 #        temp.Close()
@@ -141,11 +166,7 @@ class plots(object):
         #os.system("mv "+c.GetName()+".png /afs/hep.wisc.edu/home/ekoenig4/public_html/CSC/GC/tempPlots/")
 
         #Fill Peak points to be overlayed on the GC graphs
-        gPeak_org = [] #Used to overlay on raw GC data
-        gnPeak_org= [] #Used to overlay on normalized GC data
-        gPeak_ref = [] #Used to overlay on raw GC data
-        gnPeak_ref= [] #Used to overlay on normalized GC data
-
+        
         print(" name ", name_org, " and other " , name_ref)
         print("column name ", column_org, " and other " , column_ref)
 
@@ -162,50 +183,44 @@ class plots(object):
         print " in org_ref function np org", npn_org
         print " in org_ref function np ref", npn_ref
         for i in range(npPeaks_org):
-            gPeak_org.append(TGraph());gnPeak_org.append(TGraph())
+            self.gPeak_org.append(TGraph());self.gnPeak_org.append(TGraph())
             iP_org=self.gcsets[name_org].peaks[column_org][i][2]
-            gPeak_org[i].SetPoint(0,x_org[iP_org],y_org[iP_org]);gnPeak_org[i].SetPoint(0,xn_org[iP_org],yn_org[iP_org])
-            gPeak_org[i].SetMarkerColor(self.colours[i]);gnPeak_org[i].SetMarkerColor(self.colours[i])
-            gPeak_org[i].SetMarkerSize(2);gnPeak_org[i].SetMarkerSize(2)
-            gPeak_org[i].SetMarkerStyle(8);gnPeak_org[i].SetMarkerStyle(8)    
+            self.gPeak_org[i].SetPoint(0,x_org[iP_org],y_org[iP_org]);self.gnPeak_org[i].SetPoint(0,xn_org[iP_org],yn_org[iP_org])
+            self.gPeak_org[i].SetMarkerColor(self.colours[i]);self.gnPeak_org[i].SetMarkerColor(self.colours[i])
+            self.gPeak_org[i].SetMarkerSize(2);self.gnPeak_org[i].SetMarkerSize(2)
+            self.gPeak_org[i].SetMarkerStyle(8);self.gnPeak_org[i].SetMarkerStyle(8)    
 
         for i in range(npPeaks_ref):
-            gPeak_ref.append(TGraph());gnPeak_ref.append(TGraph())
+            self.gPeak_ref.append(TGraph());self.gnPeak_ref.append(TGraph())
             iP_ref=self.gcsets[name_ref].peaks[column_ref][i][2]
-            gPeak_ref[i].SetPoint(0,x_ref[iP_ref],y_ref[iP_ref]);gnPeak_ref[i].SetPoint(0,xn_ref[iP_ref],yn_ref[iP_ref])
-            gPeak_ref[i].SetMarkerColor(self.colours_ref[i]);gnPeak_ref[i].SetMarkerColor(self.colours_ref[i])
-            gPeak_ref[i].SetMarkerSize(2);gnPeak_ref[i].SetMarkerSize(2)
-            gPeak_ref[i].SetMarkerStyle(8);gnPeak_ref[i].SetMarkerStyle(8)    
+            self.gPeak_ref[i].SetPoint(0,x_ref[iP_ref],y_ref[iP_ref]);self.gnPeak_ref[i].SetPoint(0,xn_ref[iP_ref],yn_ref[iP_ref])
+            self.gPeak_ref[i].SetMarkerColor(self.colours_ref[i]);self.gnPeak_ref[i].SetMarkerColor(self.colours_ref[i])
+            self.gPeak_ref[i].SetMarkerSize(2);self.gnPeak_ref[i].SetMarkerSize(2)
+            self.gPeak_ref[i].SetMarkerStyle(8);self.gnPeak_ref[i].SetMarkerStyle(8)    
 
 
         self.gcsets[name_org].multi[column_org] = TMultiGraph() 
         self.gcsets[name_ref].multi[column_ref] = TMultiGraph() 
 
-        #Fill Peak Width points to be overlayed on the GC graphs
-        gWidth_org = TGraph() #Used to overlay on raw GC data
-        gnWidth_org = TGraph() # Used to overlay on normalized GC data
         npWidth_org = len(self.gcsets[name_org].width[column_org])
-        gWidth_ref = TGraph() #Used to overlay on raw GC data
-        gnWidth_ref = TGraph() # Used to overlay on normalized GC data
         npWidth_ref = len(self.gcsets[name_ref].width[column_ref])
         for i in range(npWidth_org):
             iV_org=self.gcsets[name_org].width[column_org][i][2]
             print"the valley points final org", self.gcsets[name_org].width[column_org][i][2]
-            gWidth_org.SetPoint(i,x_org[iV_org],y_org[iV_org]);gnWidth_org.SetPoint(i,xn_org[iV_org],yn_org[iV_org])
-        gWidth_org.SetMarkerColor(3);gnWidth_org.SetMarkerColor(3)
-        gWidth_org.SetMarkerSize(2);gnWidth_org.SetMarkerSize(2)
-        gWidth_org.SetMarkerStyle(8);gnWidth_org.SetMarkerStyle(8)
+            self.gWidth_org.SetPoint(i,x_org[iV_org],y_org[iV_org]);self.gnWidth_org.SetPoint(i,xn_org[iV_org],yn_org[iV_org])
+        self.gWidth_org.SetMarkerColor(3);self.gnWidth_org.SetMarkerColor(3)
+        self.gWidth_org.SetMarkerSize(2);self.gnWidth_org.SetMarkerSize(2)
+        self.gWidth_org.SetMarkerStyle(8);self.gnWidth_org.SetMarkerStyle(8)
         
         leg_org= TLegend(0.5,0.85,0.88,0.98)
 
-        logMulti_org=TMultiGraph()
-        logMulti_org.Add(self.gcsets[name_org].avgraphs[column_org],"pl")
+        self.logMulti_org.Add(self.gcsets[name_org].avgraphs[column_org],"pl")
         self.gcsets[name_org].multi[column_org].Add(self.gcsets[name_org].graphs[column_org])
         
         maxI_org = len(str(round(max(self.gcsets[name_org].integrals[column_org]),2)))
         for i in range(npPeaks_org):
-            self.gcsets[name_org].multi[column_org].Add(gPeak_org[i],"p")
-            logMulti_org.Add(gnPeak_org[i],"p")
+            self.gcsets[name_org].multi[column_org].Add(self.gPeak_org[i],"p")
+            self.logMulti_org.Add(self.gnPeak_org[i],"p")
 
             #Calculate integrals and percentages as well as their respective errors
             #note: errors are still a work in progress so these need to be changed to reflect actual errors
@@ -220,42 +235,37 @@ class plots(object):
             integral_org=" "*s_org+integral_org
             
             #leg_org.AddEntry(gPeak_org[i],self.gcsets[name_org].peakNames[column_org][i]+": "+integral_org+" #pm ^{"+integral_error_org[0]+"}_{"+integral_error_org[1]+"} | "+percentage_org+" #pm ^{"+perc_error_org[0]+"}_{"+perc_error_org[1]+"}%","p")
-            leg_org.AddEntry(gPeak_org[i],self.gcsets[name_org].peakNames[column_org][i]+": "+integral_org+" | "+percentage_org+ "%","p")
+            leg_org.AddEntry(self.gPeak_org[i],self.gcsets[name_org].peakNames[column_org][i]+": "+integral_org+" | "+percentage_org+ "%","p")
 
-        self.gcsets[name_org].multi[column_org].Add(gWidth_org,"p")
-        logMulti_org.Add(gnWidth_org,"p")
+        self.gcsets[name_org].multi[column_org].Add(self.gWidth_org,"p")
+        self.logMulti_org.Add(self.gnWidth_org,"p")
 #        self.gcsets[name_org].multi[column_org].SetName(name_org)
 
 # for other reference file calculating everything
 
         #Fill Peak Width points to be overlayed on the GC graphs
-        gWidth_ref = TGraph() #Used to overlay on raw GC data
-        gnWidth_ref = TGraph() # Used to overlay on normalized GC data
         npWidth_ref = len(self.gcsets[name_ref].width[column_ref])
-        gWidth_ref = TGraph() #Used to overlay on raw GC data
-        gnWidth_ref = TGraph() # Used to overlay on normalized GC data
         npWidth_ref = len(self.gcsets[name_ref].width[column_ref])
         for i in range(npWidth_ref):
             iV_ref=self.gcsets[name_ref].width[column_ref][i][2]
             print"the valley points final", self.gcsets[name_ref].width[column_ref][i][2]
-            gWidth_ref.SetPoint(i,x_ref[iV_ref],y_ref[iV_ref]);gnWidth_ref.SetPoint(i,xn_ref[iV_ref],yn_ref[iV_ref])
-        gWidth_ref.SetMarkerColor(28);gnWidth_ref.SetMarkerColor(28)
-        gWidth_ref.SetMarkerSize(2);gnWidth_ref.SetMarkerSize(2)
-        gWidth_ref.SetMarkerStyle(8);gnWidth_ref.SetMarkerStyle(8)
+            self.gWidth_ref.SetPoint(i,x_ref[iV_ref],y_ref[iV_ref]);self.gnWidth_ref.SetPoint(i,xn_ref[iV_ref],yn_ref[iV_ref])
+        self.gWidth_ref.SetMarkerColor(28);self.gnWidth_ref.SetMarkerColor(28)
+        self.gWidth_ref.SetMarkerSize(2);self.gnWidth_ref.SetMarkerSize(2)
+        self.gWidth_ref.SetMarkerStyle(8);self.gnWidth_ref.SetMarkerStyle(8)
         
         leg_ref= TLegend(0.5,0.68,0.88,0.83)
 
-        logMulti_ref=TMultiGraph()
         self.gcsets[name_ref].avgraphs[column_ref].SetMarkerColor(2)
-        logMulti_ref.Add(self.gcsets[name_ref].avgraphs[column_ref],"pl")
+        self.logMulti_ref.Add(self.gcsets[name_ref].avgraphs[column_ref],"pl")
         self.gcsets[name_ref].multi[column_ref].Add(self.gcsets[name_ref].graphs[column_ref])
 #        self.gcsets[name_ref].multi[column_ref].SetMarkerColor(2)
         self.gcsets[name_ref].graphs[column_ref].SetMarkerColor(2) 
         maxI_ref = len(str(round(max(self.gcsets[name_ref].integrals[column_ref]),2)))
 
         for i in range(npPeaks_ref):
-            self.gcsets[name_ref].multi[column_ref].Add(gPeak_ref[i],"p")
-            logMulti_ref.Add(gnPeak_ref[i],"p")
+            self.gcsets[name_ref].multi[column_ref].Add(self.gPeak_ref[i],"p")
+            self.logMulti_ref.Add(self.gnPeak_ref[i],"p")
 
             #Calculate integrals and percentages as well as their respective errors
             #note: errors are still a work in progress so these need to be changed to reflect actual errors
@@ -270,32 +280,23 @@ class plots(object):
             integral_ref=" "*s_ref+integral_ref
             
             #leg_ref.AddEntry(gPeak_ref[i],self.gcsets[name_ref].peakNames[column_ref][i]+": "+integral_ref+" #pm ^{"+integral_error_ref[0]+"}_{"+integral_error_ref[1]+"} | "+percentage_ref+" #pm ^{"+perc_error_ref[0]+"}_{"+perc_error_ref[1]+"}%","p")
-            leg_ref.AddEntry(gPeak_ref[i],self.gcsets[name_ref].peakNames[column_ref][i]+": "+integral_ref+" | "+percentage_ref+"%","p")
+            leg_ref.AddEntry(self.gPeak_ref[i],self.gcsets[name_ref].peakNames[column_ref][i]+": "+integral_ref+" | "+percentage_ref+"%","p")
 
-        self.gcsets[name_ref].multi[column_ref].Add(gWidth_ref,"p")
-        logMulti_ref.Add(gnWidth_ref,"p")
+        self.gcsets[name_ref].multi[column_ref].Add(self.gWidth_ref,"p")
+        self.logMulti_ref.Add(self.gnWidth_ref,"p")
 #        self.gcsets[name_ref].multi[column_ref].SetName(name_ref)
          
-        Plot_name = "cmp_plot_" + filename
  
-        Plot_name = TMultiGraph() 
- 
-        self.output='Plot_comparison'+filename+'.root'
-        rfile = TFile(self.output,"RECREATE")
-        print "creating canvas ", cname            
-        self.canvases[cname] = TCanvas(cname, cname, 1200, 800)
-        if not rfile.GetDirectory("GC_cmp"): rfile.mkdir("GC_cmp")
-        rfile.cd("GC_cmp")
-        if not rfile.GetDirectory(column_org):rfile.mkdir("GC_cmp/"+column_org)
-        rfile.cd("GC_cmp/"+column_org)
+        if not self.rfile.GetDirectory("GC_cmp"): self.rfile.mkdir("GC_cmp")
+        self.rfile.cd("GC_cmp")
         print"created sub directory"
-        Plot_name.Add(self.gcsets[name_org].multi[column_org])
+        self.Plot_name.Add(self.gcsets[name_org].multi[column_org])
         print"created sub directory"
-        Plot_name.Add(self.gcsets[name_ref].multi[column_ref])
-        Plot_name.Draw("ap")
+        self.Plot_name.Add(self.gcsets[name_ref].multi[column_ref])
+        self.Plot_name.Draw("ap")
         print"setting range"
-        Plot_name.GetXaxis().SetRangeUser(0.2,0.8)
-        Plot_name.GetYaxis().SetRangeUser(100,2500000)
+        self.Plot_name.GetXaxis().SetRangeUser(0.2,0.8)
+        self.Plot_name.GetYaxis().SetRangeUser(100,2500000)
 #        cmp_plot.GetYaxis().SetRangeUser(self.gcsets[name_org].multi[column_org].GetYaxis().GetXmin(),self.gcsets[name_org].multi[column_org].GetYaxis().GetXmax())
 #        cmp_plot.GetYaxis().SetRangeUser(0,self.gcsets[name_org].multi[column_org].GetYaxis().GetXmax())
         #Set range to zoom in on peaks for columns B and C, could probably be changed to use the user defined x range
@@ -306,26 +307,25 @@ class plots(object):
 #        self.gcsets[name_org].multi[column_org].GetXaxis().SetTitle("Time (sec)")
 #        self.gcsets[name_org].multi[column_org].GetYaxis().SetTitle("Signal (#muV)")
 #        self.gcsets[name_org].multi[column_org].GetYaxis().SetTitleOffset(1.2)
-        Plot_name.GetXaxis().SetTitle("Time (sec)")
+        self.Plot_name.GetXaxis().SetTitle("Time (sec)")
         print"range"
-        Plot_name.GetYaxis().SetTitle("Signal (#muV)")
-        Plot_name.GetYaxis().SetTitleOffset(1.2)
+        self.Plot_name.GetYaxis().SetTitle("Signal (#muV)")
+        self.Plot_name.GetYaxis().SetTitleOffset(1.2)
         print"setting range"
         leg_org.Draw()
         print"setted org"
         leg_ref.Draw()
         print"setted ref"
         self.canvases[cname].Write()
-        self.canvases[cname].Close()
+#        self.canvases[cname].Close()
 
         print"logMulti function range"
-        logMulti_all= TMultiGraph()
 
-        c2=TCanvas(cname+"_logY","c2",1200,800)
-        c2.SetLogy()
-        logMulti_all.Add(logMulti_org)
-        logMulti_all.Add(logMulti_ref)
-        logMulti_all.Draw("ap")
+        self.c2.cd()
+        self.c2.SetLogy()
+        self.logMulti_all.Add(self.logMulti_org)
+        self.logMulti_all.Add(self.logMulti_ref)
+        self.logMulti_all.Draw("ap")
          
         print" printing x[i] - y[i] values avg graphs org "
         for i in range(2000,2010):
@@ -342,28 +342,28 @@ class plots(object):
         if(column_org =="B") :
           if (min(y_list_org)*10**(-0.5) > min(y_list_ref)*10**(-0.5)): 
               print"error new here first"
-              logMulti_all.GetYaxis().SetRangeUser(min(y_list_ref)*10**(-0.5),max(y_list_org)*10**(2.2))
+              self.logMulti_all.GetYaxis().SetRangeUser(min(y_list_ref)*10**(-0.5),max(y_list_org)*10**(2.2))
           else:   
               print"error new here second"
-              logMulti_all.GetYaxis().SetRangeUser(min(y_list_org)*10**(-0.5),max(y_list_org)*10**(2.2))
+              self.logMulti_all.GetYaxis().SetRangeUser(min(y_list_org)*10**(-0.5),max(y_list_org)*10**(2.2))
               #logMulti_all.GetYaxis().SetRangeUser(500,10**7)
               print"one more step"
        
         print" another more step"
-        logMulti_all.GetXaxis().SetRangeUser(0.2,0.8) 
-        logMulti_all.GetXaxis().SetTitle("Time (sec)")
-        logMulti_all.GetYaxis().SetTitle("Signal (#muV)")
-        logMulti_all.GetYaxis().SetTitleOffset(1.2)
+        self.logMulti_all.GetXaxis().SetRangeUser(0.2,0.8) 
+        self.logMulti_all.GetXaxis().SetTitle("Time (sec)")
+        self.logMulti_all.GetYaxis().SetTitle("Signal (#muV)")
+        self.logMulti_all.GetYaxis().SetTitleOffset(1.2)
         leg_org.Draw()
         leg_ref.Draw()
         print" writing in file more step"
-        c2.Write()
-        c2.Close()
+        self.c2.Write()
+#        self.c2.Close()
         print" closed file step"
         #uncomment these to write y value histogram to file
         #c.Write()
         #self.canvases[cname].SaveAs(name+".png")
-        rfile.Close()
+#        self.rfile.Close()
         print" closed file step"
             
    

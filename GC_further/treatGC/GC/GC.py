@@ -30,18 +30,28 @@ class GSset(object):
         '''
         Constructor
         '''
-        self.gcsets    = {};
-        self.canvases  = {};
-        self.graphcount= {};
-        self.legends   = {};
+        self.gcsets    = {}
+        self.canvases  = {}
+        self.graphcount= {}
+        self.legends   = {}
         #graphsets = {};
         self.colours = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
         self.ncolours = 6
-
-        #self.output='Plot.root'
+        self.output='Plot.root'
+        self.rfile = TFile(self.output,"RECREATE")
+        self.gWidth = TGraph()
+        self.gPeak = [] #Used to overlay on raw GC data
+        self.gnPeak= [] #Used to overlay on normalized GC data
+        self.gnWidth = TGraph()
+        self.logMulti=TMultiGraph()
+        cname1="CSC_calibr_1lh_10CF4_100mb_StandardConn_May17_2018_0001_B"
+        cname2="CSC_ME11ME21out8lh_0CF4_2bm_20211124_0070_B"
+        self.canvases[cname1] = TCanvas(cname1, cname1, 1200, 800)
+        self.canvases[cname2] = TCanvas(cname2, cname2, 1200, 800)
+        self.c2=TCanvas("comparison","c2",1200,800)
         #temp=TFile(self.output,"RECREATE")
         #temp.Close()
-        gStyle.SetOptTitle(1);
+        gStyle.SetOptTitle(1)
         if dir_flag:
             print "opening directory ", files_or_dir
             list_of_files = [(files_or_dir+"/"+f) for f in os.listdir(files_or_dir) ]
@@ -262,34 +272,29 @@ class GSset(object):
         #os.system("mv "+c.GetName()+".png /afs/hep.wisc.edu/home/ekoenig4/public_html/CSC/GC/tempPlots/")
 
         #Fill Peak points to be overlayed on the GC graphs
-        gPeak = [] #Used to overlay on raw GC data
-        gnPeak= [] #Used to overlay on normalized GC data
         npPeaks = len(self.gcsets[name].peaks[column])
         x,y,np=self.gcsets[name].graphs[column].GetX(),self.gcsets[name].graphs[column].GetY(),self.gcsets[name].graphs[column].GetN()
         xn,yn,npn=self.gcsets[name].avgraphs[column].GetX(),self.gcsets[name].avgraphs[column].GetY(),self.gcsets[name].avgraphs[column].GetN()
         for i in range(npPeaks):
-            gPeak.append(TGraph());gnPeak.append(TGraph())
+            self.gPeak.append(TGraph());self.gnPeak.append(TGraph())
             iP=self.gcsets[name].peaks[column][i][2]
-            gPeak[i].SetPoint(0,x[iP],y[iP]);gnPeak[i].SetPoint(0,xn[iP],yn[iP])
-            gPeak[i].SetMarkerColor(self.colours[i]);gnPeak[i].SetMarkerColor(self.colours[i])
-            gPeak[i].SetMarkerSize(2);gnPeak[i].SetMarkerSize(2)
-            gPeak[i].SetMarkerStyle(8);gnPeak[i].SetMarkerStyle(8)    
+            self.gPeak[i].SetPoint(0,x[iP],y[iP]);self.gnPeak[i].SetPoint(0,xn[iP],yn[iP])
+            self.gPeak[i].SetMarkerColor(self.colours[i]);self.gnPeak[i].SetMarkerColor(self.colours[i])
+            self.gPeak[i].SetMarkerSize(2);self.gnPeak[i].SetMarkerSize(2)
+            self.gPeak[i].SetMarkerStyle(8);self.gnPeak[i].SetMarkerStyle(8)    
 
         #Fill Peak Width points to be overlayed on the GC graphs
-        gWidth = TGraph() #Used to overlay on raw GC data
-        gnWidth = TGraph() # Used to overlay on normalized GC data
         npWidth = len(self.gcsets[name].width[column])
         for i in range(npWidth):
             iV=self.gcsets[name].width[column][i][2]
-            gWidth.SetPoint(i,x[iV],y[iV]);gnWidth.SetPoint(i,xn[iV],yn[iV])
-        gWidth.SetMarkerColor(3);gnWidth.SetMarkerColor(3)
-        gWidth.SetMarkerSize(2);gnWidth.SetMarkerSize(2)
-        gWidth.SetMarkerStyle(8);gnWidth.SetMarkerStyle(8)
+            self.gWidth.SetPoint(i,x[iV],y[iV]);self.gnWidth.SetPoint(i,xn[iV],yn[iV])
+        self.gWidth.SetMarkerColor(3);self.gnWidth.SetMarkerColor(3)
+        self.gWidth.SetMarkerSize(2);self.gnWidth.SetMarkerSize(2)
+        self.gWidth.SetMarkerStyle(8);self.gnWidth.SetMarkerStyle(8)
         
         leg= TLegend(0.5,0.65,0.88,0.85)
 
-        logMulti=TMultiGraph()
-        logMulti.Add(self.gcsets[name].avgraphs[column],"pl")
+        self.logMulti.Add(self.gcsets[name].avgraphs[column],"pl")
         
         self.gcsets[name].multi[column].Add(self.gcsets[name].graphs[column],"pl")
         
@@ -297,8 +302,8 @@ class GSset(object):
         #if npPeaks == 3: loop_times = npPeaks-1
         #else: loop_times = npPeaks
         for i in range(npPeaks):
-            self.gcsets[name].multi[column].Add(gPeak[i],"p")
-            logMulti.Add(gnPeak[i],"p")
+            self.gcsets[name].multi[column].Add(self.gPeak[i],"p")
+            self.logMulti.Add(self.gnPeak[i],"p")
 
             #Calculate integrals and percentages as well as their respective errors
             #note: errors are still a work in progress so these need to be changed to reflect actual errors
@@ -313,20 +318,19 @@ class GSset(object):
             integral=" "*s+integral
             
             #leg.AddEntry(gPeak[i],self.gcsets[name].peakNames[column][i]+": "+integral+" #pm ^{"+integral_error[0]+"}_{"+integral_error[1]+"} | "+percentage+" #pm ^{"+perc_error[0]+"}_{"+perc_error[1]+"}%","p")
-            leg.AddEntry(gPeak[i],self.gcsets[name].peakNames[column][i]+": "+integral+" | "+percentage+"%","p")
+            leg.AddEntry(self.gPeak[i],self.gcsets[name].peakNames[column][i]+": "+integral+" | "+percentage+"%","p")
 
-        self.gcsets[name].multi[column].Add(gWidth,"p")
-        logMulti.Add(gnWidth,"p")
+        self.gcsets[name].multi[column].Add(self.gWidth,"p")
+        self.logMulti.Add(self.gnWidth,"p")
         self.gcsets[name].multi[column].SetName(name)
 
-        self.output = "Plot_" + name_new + ".root"
-        rfile = TFile(self.output,"RECREATE")
         print "creating canvas ", cname            
-        self.canvases[cname] = TCanvas(cname, cname, 1200, 800)
-        if not rfile.GetDirectory("GC"): rfile.mkdir("GC")
-        rfile.cd("GC")
-        if not rfile.GetDirectory(column):rfile.mkdir("GC/"+column)
-        rfile.cd("GC/"+column)
+        self.canvases[cname].cd()
+        if self.rfile.GetDirectory("GC"):  print"yes dir GC"
+        if not self.rfile.GetDirectory("GC"): self.rfile.mkdir("GC") ; print"makign dir GC"
+        self.rfile.cd("GC")
+       # if not self.rfile.GetDirectory(column):self.rfile.mkdir("GC/"+column); print"making another column directory"
+       # self.rfile.cd("GC/"+column)
         self.gcsets[name].multi[column].Draw("a")
         y_range=(self.gcsets[name].multi[column].GetYaxis().GetXmin(),self.gcsets[name].multi[column].GetYaxis().GetXmax())
 
@@ -339,24 +343,28 @@ class GSset(object):
         self.gcsets[name].multi[column].GetYaxis().SetTitleOffset(1.2)
         leg.Draw()
         self.canvases[cname].Write()
-        c2=TCanvas(cname+"_logY","c2",1200,800)
-        c2.SetLogy()
-        logMulti.Draw("a")
-
-        #Set range to zoom in on peaks for columns B and C and y axis values, could probably be changed to use the user defined x range
-        if   (column == "B"): logMulti.GetXaxis().SetRangeUser(0.2,0.8);y_list=[yn[i] for i in range (npn) if 0.2 <= xn[i] <= 0.8 and yn[i] > 1];logMulti.GetYaxis().SetRangeUser(min(y_list)*10**(-0.5),max(y_list)*10**(2.2))
-        elif (column == "C"): logMulti.GetXaxis().SetRangeUser(0.1,0.5);y_list=[yn[i] for i in range (npn) if 0.1 <= xn[i] <= 0.5 and yn[i] > 1];logMulti.GetYaxis().SetRangeUser(min(y_list)*10**(-0.5),max(y_list)*10**(2))
+     #   self.canvases[cname].SaveAs(name+".png")
         
-        logMulti.GetXaxis().SetTitle("Time (sec)")
-        logMulti.GetYaxis().SetTitle("Signal (#muV)")
-        logMulti.GetYaxis().SetTitleOffset(1.2)
+        self.c2.cd()
+        self.c2.SetLogy()
+        self.logMulti.Draw("a")
+        print " after plottign log MUlti and before axis length"
+        #Set range to zoom in on peaks for columns B and C and y axis values, could probably be changed to use the user defined x range
+        if   (column == "B"): self.logMulti.GetXaxis().SetRangeUser(0.2,0.8);#y_list=[yn[i] for i in range (npn) if 0.2 <= xn[i] <= 0.8 and yn[i] > 1];logMulti.GetYaxis().SetRangeUser(min(y_list)*10**(-0.5),max(y_list)*10**(2.2))
+        elif (column == "C"): self.logMulti.GetXaxis().SetRangeUser(0.1,0.5);#y_list=[yn[i] for i in range (npn) if 0.1 <= xn[i] <= 0.5 and yn[i] > 1];logMulti.GetYaxis().SetRangeUser(min(y_list)*10**(-0.5),max(y_list)*10**(2))
+        
+        print " after axis length"
+        self.logMulti.GetXaxis().SetTitle("Time (sec)")
+        self.logMulti.GetYaxis().SetTitle("Signal (#muV)")
+        self.logMulti.GetYaxis().SetTitleOffset(1.2)
         leg.Draw()
-        c2.Write()
+        print"error in writing the canvas"
+        self.c2.Write()
 
+        print"error in closing the file"
         #uncomment these to write y value histogram to file
         #c.Write()
-        #self.canvases[cname].SaveAs(name+".png")
-        rfile.Close()
+        #self.rfile.Close()
     
     def plotGC(self, name, column, newflag, oldname="", oldcolumn=""):
         if not(name in self.gcsets.keys()) or not(column in self.gcsets[name].graphs.keys()) :

@@ -16,7 +16,7 @@ from ROOT import TMultiGraph
 from ROOT import TF1
 from ROOT import TLine
 import ROOT
-
+import math
 import GCdata
 
 gROOT.SetBatch(1)
@@ -26,14 +26,6 @@ class plots(object):
     '''
     classdocs
     '''
-    gcsets    = {};
-    canvases  = {};
-    graphcount= {};
-    legends   = {};
-    #graphsets = {};
-    colours = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
-    colours_ref = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
-    ncolours = 6
 
 
     # read files and make plots send two files and directories flag to initialize
@@ -42,6 +34,16 @@ class plots(object):
         '''
         Constructor
         '''
+
+        self.gcsets    = {};
+        self.canvases  = {};
+        self.graphcount= {};
+        self.legends   = {};
+        #graphsets = {};
+        self.colours = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
+        self.colours_ref = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
+        self.ncolours = 6
+
 #        self.output='Plot_comparison.root'
 #        temp=TFile(self.output,"RECREATE")
 #        temp.Close()
@@ -176,6 +178,8 @@ class plots(object):
             gPeak_ref[i].SetMarkerStyle(8);gnPeak_ref[i].SetMarkerStyle(8)    
 
 
+        self.gcsets[name_org].multi[column_org] = TMultiGraph() 
+        self.gcsets[name_ref].multi[column_ref] = TMultiGraph() 
 
         #Fill Peak Width points to be overlayed on the GC graphs
         gWidth_org = TGraph() #Used to overlay on raw GC data
@@ -199,9 +203,7 @@ class plots(object):
         self.gcsets[name_org].multi[column_org].Add(self.gcsets[name_org].graphs[column_org])
         
         maxI_org = len(str(round(max(self.gcsets[name_org].integrals[column_org]),2)))
-        if npPeaks_org == 3: loop_times_org = npPeaks_org-1
-        else: loop_times_org = npPeaks_org
-        for i in range(loop_times_org):
+        for i in range(npPeaks_org):
             self.gcsets[name_org].multi[column_org].Add(gPeak_org[i],"p")
             logMulti_org.Add(gnPeak_org[i],"p")
 
@@ -217,7 +219,8 @@ class plots(object):
             s_org=maxI_org-len(integral_org)+2
             integral_org=" "*s_org+integral_org
             
-            leg_org.AddEntry(gPeak_org[i],self.gcsets[name_org].peakNames[column_org][i]+": "+integral_org+" #pm ^{"+integral_error_org[0]+"}_{"+integral_error_org[1]+"} | "+percentage_org+" #pm ^{"+perc_error_org[0]+"}_{"+perc_error_org[1]+"}%","p")
+            #leg_org.AddEntry(gPeak_org[i],self.gcsets[name_org].peakNames[column_org][i]+": "+integral_org+" #pm ^{"+integral_error_org[0]+"}_{"+integral_error_org[1]+"} | "+percentage_org+" #pm ^{"+perc_error_org[0]+"}_{"+perc_error_org[1]+"}%","p")
+            leg_org.AddEntry(gPeak_org[i],self.gcsets[name_org].peakNames[column_org][i]+": "+integral_org+" | "+percentage_org+ "%","p")
 
         self.gcsets[name_org].multi[column_org].Add(gWidth_org,"p")
         logMulti_org.Add(gnWidth_org,"p")
@@ -249,10 +252,8 @@ class plots(object):
 #        self.gcsets[name_ref].multi[column_ref].SetMarkerColor(2)
         self.gcsets[name_ref].graphs[column_ref].SetMarkerColor(2) 
         maxI_ref = len(str(round(max(self.gcsets[name_ref].integrals[column_ref]),2)))
-        if npPeaks_ref == 3: loop_times_ref = npPeaks_ref-1
-        else: loop_times_ref = npPeaks_ref
 
-        for i in range(loop_times_ref):
+        for i in range(npPeaks_ref):
             self.gcsets[name_ref].multi[column_ref].Add(gPeak_ref[i],"p")
             logMulti_ref.Add(gnPeak_ref[i],"p")
 
@@ -268,7 +269,8 @@ class plots(object):
             s_ref=maxI_ref-len(integral_ref)+2
             integral_ref=" "*s_ref+integral_ref
             
-            leg_ref.AddEntry(gPeak_ref[i],self.gcsets[name_ref].peakNames[column_ref][i]+": "+integral_ref+" #pm ^{"+integral_error_ref[0]+"}_{"+integral_error_ref[1]+"} | "+percentage_ref+" #pm ^{"+perc_error_ref[0]+"}_{"+perc_error_ref[1]+"}%","p")
+            #leg_ref.AddEntry(gPeak_ref[i],self.gcsets[name_ref].peakNames[column_ref][i]+": "+integral_ref+" #pm ^{"+integral_error_ref[0]+"}_{"+integral_error_ref[1]+"} | "+percentage_ref+" #pm ^{"+perc_error_ref[0]+"}_{"+perc_error_ref[1]+"}%","p")
+            leg_ref.AddEntry(gPeak_ref[i],self.gcsets[name_ref].peakNames[column_ref][i]+": "+integral_ref+" | "+percentage_ref+"%","p")
 
         self.gcsets[name_ref].multi[column_ref].Add(gWidth_ref,"p")
         logMulti_ref.Add(gnWidth_ref,"p")
@@ -279,19 +281,19 @@ class plots(object):
         Plot_name = TMultiGraph() 
  
         self.output='Plot_comparison'+filename+'.root'
-        temp=TFile(self.output,"RECREATE")
-        temp.Close()
-         
-        rfile = TFile(self.output,"update")
+        rfile = TFile(self.output,"RECREATE")
         print "creating canvas ", cname            
         self.canvases[cname] = TCanvas(cname, cname, 1200, 800)
         if not rfile.GetDirectory("GC_cmp"): rfile.mkdir("GC_cmp")
         rfile.cd("GC_cmp")
         if not rfile.GetDirectory(column_org):rfile.mkdir("GC_cmp/"+column_org)
         rfile.cd("GC_cmp/"+column_org)
+        print"created sub directory"
         Plot_name.Add(self.gcsets[name_org].multi[column_org])
+        print"created sub directory"
         Plot_name.Add(self.gcsets[name_ref].multi[column_ref])
         Plot_name.Draw("ap")
+        print"setting range"
         Plot_name.GetXaxis().SetRangeUser(0.2,0.8)
         Plot_name.GetYaxis().SetRangeUser(100,2500000)
 #        cmp_plot.GetYaxis().SetRangeUser(self.gcsets[name_org].multi[column_org].GetYaxis().GetXmin(),self.gcsets[name_org].multi[column_org].GetYaxis().GetXmax())
@@ -305,13 +307,19 @@ class plots(object):
 #        self.gcsets[name_org].multi[column_org].GetYaxis().SetTitle("Signal (#muV)")
 #        self.gcsets[name_org].multi[column_org].GetYaxis().SetTitleOffset(1.2)
         Plot_name.GetXaxis().SetTitle("Time (sec)")
+        print"range"
         Plot_name.GetYaxis().SetTitle("Signal (#muV)")
         Plot_name.GetYaxis().SetTitleOffset(1.2)
+        print"setting range"
         leg_org.Draw()
+        print"setted org"
         leg_ref.Draw()
+        print"setted ref"
         self.canvases[cname].Write()
-       
-        logMulti_all=TMultiGraph()
+        self.canvases[cname].Close()
+
+        print"logMulti function range"
+        logMulti_all= TMultiGraph()
 
         c2=TCanvas(cname+"_logY","c2",1200,800)
         c2.SetLogy()
@@ -325,36 +333,38 @@ class plots(object):
         print" printing x[i] - y[i] values avg graphs ref "
         for i in range(2000,2010):
           print "({},{})".format(xn_ref[i], yn_ref[i])
+
+        print"error just here"
         #Set range to zoom in on peaks for columns B and C and y axis values, could probably be changed to use the user defined x range
-        if   (column_org == "B"): y_list_org=[yn_org[i] for i in range (npn_org) if 0.2 <= xn_org[i] <= 0.8 and yn_org[i] > 1];
-#        for i in range(npn_org):
-#          if 0.2<= xn_org[i] <=0.8:
-#              print " y_list _org( {},{})".format(xn_org[i], y_list_org[i])
-#        logMulti_org.GetYaxis().SetRangeUser(min(y_list_org)*10**(-0.5),max(y_list_org)*10**(2.2))
-#        logMulti_org.GetXaxis().SetRangeUser(0.2,0.8)
-        if (column_ref == "B"): y_list_ref=[yn_ref[i] for i in range (npn_ref) if 0.2 <= xn_ref[i] <= 0.8 and yn_ref[i] > 1];
-#        logMulti_ref.GetYaxis().SetRangeUser(min(y_list_ref)*10**(-0.5),max(y_list_ref)*10**(2.2))
-#        logMulti_ref.GetXaxis().SetRangeUser(0.2,0.8)
-#        for i in range(npn_ref):
-#          if 0.2<= xn_ref[i] <=0.8: 
-#              print " y_list _ref( {},{})".format(xn_ref[i], y_list_ref[i]) 
+        if   (column_org == "B"): y_list_org=[yn_org[i] for i in range (npn_org) if 0.2 <= xn_org[i] <= 0.8 and yn_org[i] > 1]
+        if (column_ref == "B"): y_list_ref=[yn_ref[i] for i in range (npn_ref) if 0.2 <= xn_ref[i] <= 0.8 and yn_ref[i] > 1]
+        #print"error*** here"
         if(column_org =="B") :
           if (min(y_list_org)*10**(-0.5) > min(y_list_ref)*10**(-0.5)): 
+              print"error new here first"
               logMulti_all.GetYaxis().SetRangeUser(min(y_list_ref)*10**(-0.5),max(y_list_org)*10**(2.2))
           else:   
+              print"error new here second"
               logMulti_all.GetYaxis().SetRangeUser(min(y_list_org)*10**(-0.5),max(y_list_org)*10**(2.2))
-          logMulti_all.GetXaxis().SetRangeUser(0.2,0.8) 
+              #logMulti_all.GetYaxis().SetRangeUser(500,10**7)
+              print"one more step"
+       
+        print" another more step"
+        logMulti_all.GetXaxis().SetRangeUser(0.2,0.8) 
         logMulti_all.GetXaxis().SetTitle("Time (sec)")
         logMulti_all.GetYaxis().SetTitle("Signal (#muV)")
         logMulti_all.GetYaxis().SetTitleOffset(1.2)
         leg_org.Draw()
         leg_ref.Draw()
+        print" writing in file more step"
         c2.Write()
-
+        c2.Close()
+        print" closed file step"
         #uncomment these to write y value histogram to file
         #c.Write()
         #self.canvases[cname].SaveAs(name+".png")
         rfile.Close()
+        print" closed file step"
             
    
 #    def plotGC(self, name, column, newflag, oldname="", oldcolumn=""):
@@ -401,8 +411,12 @@ class plots(object):
          valley_org=self.gcsets[name_org].width[column][0][2]
          valley_ref=self.gcsets[name_ref].width[column][0][2]
 
-         valley_ref_second = self.gcsets[name_ref].width[column][1][2]
-         valley_org_second = self.gcsets[name_org].width[column][1][2]
+         second_valley_ref = self.gcsets[name_ref].width[column][2][2]
+         second_valley_org = self.gcsets[name_org].width[column][2][2]
+
+         third_valley_ref = self.gcsets[name_ref].width[column][3][2]
+         third_valley_org = self.gcsets[name_org].width[column][3][2]
+
 
          # values of graphs 
          x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
@@ -417,6 +431,12 @@ class plots(object):
 
          shift_valley_org_avgraphs = yn_org[valley_org] - 500.0
          shift_valley_ref_avgraphs = yn_ref[valley_ref] - 500.0
+ 
+         print "************************************ all the valleys ( i, x, y )**********"
+         print " first : ({}, {}, {})".format(valley_org, x_org[valley_org] , y_org[valley_org])
+         print " second  : ({}, {}, {})".format(second_valley_org, x_org[second_valley_org] , y_org[second_valley_org])
+         print " third  : ({}, {}, {})".format(third_valley_org, x_org[third_valley_org] , y_org[third_valley_org])
+         print "************************************ printed all the valleys ( i, x, y )**********"
          
          print " np in plot org_ref function org graph ",np_org
          print " np in plot org_ref function ref graph ",np_ref
@@ -439,7 +459,7 @@ class plots(object):
           print "({},{})".format(x_ref[i], y_ref[i])
  
          print" printing x[i] - y[i] values avg graphs org before shifting graphs"
-         for i in range(2000,2010):
+         for i in range(npn_org):
           print "({},{})".format(xn_org[i], yn_org[i])
          print" printing x[i] - y[i] values avg graphs ref before shifting graphs"
          for i in range(2000,2010):
@@ -447,10 +467,10 @@ class plots(object):
  
 
          print" printing x[i] - y[i] values between first valley and second valley graphs org before shifting"
-         for i in range(valley_org, valley_org_second):
+         for i in range(valley_org, second_valley_org):
           print "({},{})".format(x_org[i], y_org[i])
          print" printing x[i] - y[i] values graphs ref between first valley and second valley before shifting"
-         for i in range(valley_ref, valley_ref_second):
+         for i in range(valley_ref, second_valley_ref):
           print "({},{})".format(x_ref[i], y_ref[i])
  
          # since yn_org  already declared from before and so it is fine to use it here directly
@@ -463,6 +483,60 @@ class plots(object):
              print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
              return
          self.gcsets[name_ref].shiftGraph(column, shift_valley_ref_graphs, shift_valley_ref_avgraphs)
+
+
+    def shiftGC_baseline_CO2(self, name_org,name_ref, column):
+                   # to evaulate the value to shift 
+          # first peak and first valley
+         peak_org=self.gcsets[name_org].peaks[column][0][2]
+         peak_ref=self.gcsets[name_ref].peaks[column][0][2]
+         valley_org=self.gcsets[name_org].width[column][0][2]
+         valley_ref=self.gcsets[name_ref].width[column][0][2]
+
+         second_valley_ref = self.gcsets[name_ref].width[column][2][2]
+         second_valley_org = self.gcsets[name_org].width[column][2][2]
+
+         third_valley_ref = self.gcsets[name_ref].width[column][3][2]
+         third_valley_org = self.gcsets[name_org].width[column][3][2]
+
+
+         # values of graphs 
+         x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
+         x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
+
+         # values of avgraphs
+         xn_org,yn_org,npn_org=self.gcsets[name_org].avgraphs[column].GetX(),self.gcsets[name_org].avgraphs[column].GetY(),self.gcsets[name_org].avgraphs[column].GetN()
+         xn_ref,yn_ref,npn_ref=self.gcsets[name_ref].avgraphs[column].GetX(),self.gcsets[name_ref].avgraphs[column].GetY(),self.gcsets[name_ref].avgraphs[column].GetN()
+ 
+         shift_valley_CO2_org_graphs = y_org[second_valley_org] - 500.0
+         shift_valley_CO2_ref_graphs = y_ref[second_valley_ref] - 500.0
+
+         shift_valley_CO2_org_avgraphs = yn_org[second_valley_org] - 500.0
+         shift_valley_CO2_ref_avgraphs = yn_ref[second_valley_ref] - 500.0
+
+         print "************************************ all the valleys ( i, x, y )**********"
+         print " first : ({}, {}, {})".format(valley_org, x_org[valley_org] , y_org[valley_org])
+         print " second  : ({}, {}, {})".format(second_valley_org, x_org[second_valley_org] , y_org[second_valley_org])
+         print " third  : ({}, {}, {})".format(third_valley_org, x_org[third_valley_org] , y_org[third_valley_org])
+         print "************************************ printed all the valleys ( i, x, y )**********"
+         
+         print" printing x[i] - y[i] values between first valley and second valley graphs org before shifting"
+         for i in range(valley_org, second_valley_org):
+          print "({},{})".format(x_org[i], y_org[i])
+         print" printing x[i] - y[i] values graphs ref between first valley and second valley before shifting"
+         for i in range(valley_ref, second_valley_ref):
+          print "({},{})".format(x_ref[i], y_ref[i])
+ 
+          # since yn_org  already declared from before and so it is fine to use it here directly  for CO2
+         if not(name_org in self.gcsets.keys()) or not (column in self.gcsets[name_org].graphs.keys()):
+             print "can't find ", name_org, ", column ", column, " in data; doing nothing"
+             return
+         self.gcsets[name_org].shiftGraph_CO2(column, shift_valley_CO2_org_graphs, shift_valley_CO2_org_avgraphs, second_valley_org, third_valley_org)
+
+         if not(name_ref in self.gcsets.keys()) or not (column in self.gcsets[name_ref].graphs.keys()):
+             print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
+             return
+         self.gcsets[name_ref].shiftGraph_CO2(column, shift_valley_CO2_ref_graphs, shift_valley_CO2_ref_avgraphs, second_valley_ref, third_valley_ref)
  
     def scaleGC_first_peak(self, name_org,name_ref, column):
           # to evaulate the value to shift 
@@ -474,7 +548,18 @@ class plots(object):
 
          valley_ref_second = self.gcsets[name_ref].width[column][1][2]
          valley_org_second = self.gcsets[name_org].width[column][1][2]
+
+         # for Co2 curve
+         peak_org_Co2 = self.gcsets[name_org].peaks[column][1][2]
+         peak_ref_Co2 = self.gcsets[name_ref].peaks[column][1][2]
+
+         valley_org_Co2 = self.gcsets[name_org].width[column][2][2]
+         valley_org_Co2_second = self.gcsets[name_org].width[column][3][2]
  
+         valley_ref_Co2 = self.gcsets[name_ref].width[column][2][2]
+         valley_ref_Co2_second = self.gcsets[name_ref].width[column][3][2]
+
+
          x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
          x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
 
@@ -496,6 +581,18 @@ class plots(object):
          y_base_org_avgraphs = yn_org[valley_org]
          x_peak_org_avgraphs = xn_org[peak_org]
          x_base_org_avgraphs = xn_org[valley_org]
+
+         #Co2  curve
+         y_peak_Co2_org_graphs = y_org[peak_org_Co2]
+         y_base_Co2_org_graphs = y_org[valley_org_Co2]
+         x_peak_Co2_org_graphs = x_org[peak_org_Co2]
+         x_base_Co2_org_graphs = x_org[valley_org_Co2]
+
+
+         y_peak_Co2_org_avgraphs = yn_org[peak_org_Co2]
+         y_base_Co2_org_avgraphs = yn_org[valley_org_Co2]
+         x_peak_Co2_org_avgraphs = xn_org[peak_org_Co2]
+         x_base_Co2_org_avgraphs = xn_org[valley_org_Co2]
 
 #         y_peak_ref_graphs = y_ref[peak_ref]
 #         y_base_ref_graphs = y_ref[valley_ref]
@@ -547,9 +644,87 @@ class plots(object):
          if not(name_ref in self.gcsets.keys()) or not (column in self.gcsets[name_ref].graphs.keys()):
              print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
              return
-         self.gcsets[name_ref].scaleGC_peakAr(column, y_peak_org_graphs, y_base_org_graphs, y_peak_org_avgraphs, y_base_org_avgraphs,peak_ref, valley_ref, valley_ref_second)
+         self.gcsets[name_ref].scaleGC_peak(column, y_peak_org_graphs, y_base_org_graphs, y_peak_org_avgraphs, y_base_org_avgraphs,peak_ref, valley_ref, valley_ref_second)
+         self.gcsets[name_ref].scaleGC_peak(column, y_peak_Co2_org_graphs, y_base_Co2_org_graphs, y_peak_Co2_org_avgraphs, y_base_Co2_org_avgraphs,peak_ref_Co2, valley_ref_Co2, valley_ref_Co2_second)
  
+    ##         # checking chi-square after scaling
+    ##         chi_square_Ar = 0 
+    ##         chi_square_Co2 = 0
+    ##         length_range_Ar = 0 
+    ##         length_range_Co2 = 0
+    ##            
+    ##         # Chi-square for Ar peak
+    ##         for it in range(valley_org, peak_org): 
+    ##            length_range_Ar+=1
+    ##            print"y_ref and y_org",y_new_ref[it]," -  ",y_org[it]
+    ##            chi_square_Ar = float(chi_square_Ar+ (pow((y_new_ref[it] - y_org[it]),2)/(pow( (0.05*y_org[it]) ,2))))
+    ##            print"chi_square ",chi_square_Ar
+    ##          print " total chi square ",chi_square_Ar 
+    ##          chi_square_ndf_Ar = chi_square_Ar/(length_range_Ar -1)
+    ##          chi_square_list_Ar.append(chi_square_ndf_Ar)
+    ##          print"chi_square per ndf ",chi_square_ndf_Ar 
+    ##
+    ##          # Chi-square for Co2 peak
+    ##          for it in range(valley_org_Co2, peak_org_Co2): 
+    ##            length_range_Co2+=1
+    ##            print"y_ref and y_org",y_new_ref[it]," -  ",y_org[it]
+    ##            chi_square_Co2 = float(chi_square_Co2+ (pow((y_new_ref[it] - y_org[it]),2)/(pow((0.05 * y_org[it]),2))))
+    ##            print"chi_square Co2 ",chi_square_Co2
+    ##          print " total chi square Co2 ",chi_square_Co2 
+    ##          chi_square_ndf_Co2 = chi_square_Co2/(length_range_Co2 -1)
+    ##          chi_square_list_Co2.append(chi_square_ndf_Co2)
+    ##          print "chi_square per ndf _Co2",chi_square_ndf_Co2 
+    ##            
+    ##            #exiting the shift i value loop
+    ##
+    ##         # make chi square value plot
+    ##         print"type chi square ", type(chi_square_ndf_Ar)
+    ##       
+    ##         for i in range(1,11):
+    ##          chi_plot_Ar.SetPoint(i,shift_i_value_list[i], chi_square_list_Ar[i])
+    ##         canvas_chi_square_Ar = TCanvas("chi_square_shift_x : Ar","canvas_chi_square_Ar",1200,800)
+    ##         chi_plot_Ar.GetXaxis().SetRangeUser(-6,6)
+    ##         chi_plot_Ar.SetMarkerColor(2)
+    ##         chi_plot_Ar.SetMarkerSize(2)
+    ##         chi_plot_Ar.SetMarkerStyle(8)
+    ##         chi_plot_Ar.GetYaxis().SetRangeUser(0.,10000)
+    ##         canvas_chi_square_Ar.SetLogy()
+    ##         chi_plot_Ar.Draw("ap")
+    ##         canvas_chi_square_Ar.SaveAs("chi_square_Ar.pdf") 
+    ##         print"i values at peak  ref, valley, second valley_Ar : ",peak_ref,"  ",valley_ref, "  ",valley_ref_second
+    ##
+    ##         min_chi_square_Ar = min(chi_square_list_Ar)
+    ##         index_min_chi_square_Ar = chi_square_list_Ar.index(min_chi_square_Ar)
+    ##
+    ##         print"minimum chi-square is with shift value Ar  ",index_min_chi_square_Ar," with chi-square ",min_chi_square_Ar
+    ## 
+    ##
+    ##            # make chi square value plot
+    ##
+    ##         for i in range(1,11):
+    ##          chi_plot_Co2.SetPoint(i,shift_i_value_list[i], chi_square_list_Co2[i])
+    ##         canvas_chi_square_Co2 = TCanvas("chi_square_shift_x : Co2","canvas_chi_square_Co2",1200,800)
+    ##         chi_plot_Co2.SetMarkerColor(2)
+    ##         chi_plot_Co2.GetXaxis().SetRangeUser(-6,6)
+    ##         chi_plot_Co2.SetMarkerSize(2)
+    ##         chi_plot_Co2.SetMarkerStyle(8)
+    ##         chi_plot_Co2.GetYaxis().SetRangeUser(10000,100000000)
+    ##         canvas_chi_square_Co2.SetLogy()
+    ##         chi_plot_Co2.Draw("ap")
+    ##         canvas_chi_square_Co2.SaveAs("chi_square_Co2.pdf") 
+    ##         print"i values at peak  ref, valley, second valley : ",peak_ref_Co2,"  ",valley_ref_Co2, "  ",valley_ref_second_Co2
+    ##
+    ##         # peak minimum chi-square shift value
+    ##
+    ##         min_chi_square_Co2 = min(chi_square_list_Co2)
+    ##         index_min_chi_square_Co2 = chi_square_list_Co2.index(min_chi_square_Co2)
+    ##
+    ##         print"minimum chi-square is with shift value  Co2 ",index_min_chi_square_Co2," with chi-square ",min_chi_square_Co2
+
+
+   #  shift along X and check chi-square and find optimum shift value
     def shiftGC_x(self, name_org, name_ref, column):
+         print"length of peak list ", len(self.gcsets[name_org].peaks[column])
          peak_org=self.gcsets[name_org].peaks[column][0][2]
          peak_ref=self.gcsets[name_ref].peaks[column][0][2]
          valley_org=self.gcsets[name_org].width[column][0][2]
@@ -557,6 +732,14 @@ class plots(object):
 
          valley_ref_second = self.gcsets[name_ref].width[column][1][2]
          valley_org_second = self.gcsets[name_org].width[column][1][2]
+ 
+         peak_org_CO2=self.gcsets[name_org].peaks[column][1][2]
+         peak_ref_CO2=self.gcsets[name_ref].peaks[column][1][2]
+         valley_org_CO2=self.gcsets[name_org].width[column][2][2]
+         valley_ref_CO2=self.gcsets[name_ref].width[column][2][2]
+
+         valley_ref_second_CO2 = self.gcsets[name_ref].width[column][3][2]
+         valley_org_second_CO2 = self.gcsets[name_org].width[column][3][2]
  
          x_org,y_org,np_org=self.gcsets[name_org].graphs[column].GetX(),self.gcsets[name_org].graphs[column].GetY(),self.gcsets[name_org].graphs[column].GetN()
          x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
@@ -566,66 +749,210 @@ class plots(object):
  
          print" x, y values for org curve"
          for tmp1 in range(valley_org,valley_org_second):
-           print"({},{})".format(x_org[tmp1], y_org[tmp1]),
+           print"({},{})".format(tmp1, x_org[tmp1], y_org[tmp1]),
 
          print" x, y values for ref curve"
          for tmp2 in range(valley_ref,valley_ref_second):
-           print"({},{})".format(x_ref[tmp2], y_ref[tmp2]),
+           print"({},{})".format(tmp2, x_ref[tmp2], y_ref[tmp2]),
 
-         print"i values at peak org and ref : ",peak_org,"  ",peak_ref
-         print"x values at peak org and ref : ",x_org[peak_org],"  ",x_ref[peak_ref]
-         print"y values at peak org and ref : ",y_org[peak_org],"  ",y_ref[peak_ref]
-         shift_value = x_org[peak_org] - x_ref[peak_ref]
-         print"values by which Ar ref peak shifted along X ",shift_value
+         print"i values at peak org and ref Ar : ",peak_org,"  ",peak_ref
+         print"x values at peak org and ref Ar : ",x_org[peak_org],"  ",x_ref[peak_ref]
+         print"y values at peak org and ref Ar : ",y_org[peak_org],"  ",y_ref[peak_ref]
+      
+         print"i values at peak org and ref Co2 : ",peak_org_CO2,"  ",peak_ref_CO2
+         print"x values at peak org and ref Co2 : ",x_org[peak_org_CO2],"  ",x_ref[peak_ref_CO2]
+         print"y values at peak org and ref Co2 : ",y_org[peak_org_CO2],"  ",y_ref[peak_ref_CO2]
+ 
+         print" values at valley org Ar : ({},{},{})  ".format(valley_org, x_org[valley_org], y_org[valley_org]) 
+         print" values at valley second org Ar : ({},{},{})  ".format(valley_org_second, x_org[valley_org_second], y_org[valley_org_second]) 
+
+         print" values at valley org Co2 : ({},{},{})  ".format(valley_org_CO2, x_org[valley_org_CO2], y_org[valley_org_CO2]) 
+         print" values at valley second org Co2 : ({},{},{})  ".format(valley_org_second_CO2, x_org[valley_org_second_CO2], y_org[valley_org_second_CO2]) 
+
+         print" values at valley ref Ar : ({},{},{})  ".format(valley_ref, x_ref[valley_ref], y_ref[valley_ref]) 
+         print" values at valley second ref Ar : ({},{},{})  ".format(valley_ref_second, x_ref[valley_ref_second], y_ref[valley_ref_second]) 
+
+         print" values at valley ref Co2 : ({},{},{})  ".format(valley_ref_CO2, x_ref[valley_ref_CO2], y_ref[valley_ref_CO2]) 
+         print" values at valley second ref Co2 : ({},{},{})  ".format(valley_ref_second_CO2, x_ref[valley_ref_second_CO2], y_ref[valley_ref_second_CO2]) 
+
+         # shift we define to just check chi-square
+         chi_square_list_Ar=[]
+         chi_plot_Ar = TGraph()
+         shift_i_value_list = []
+         #shifting for Ar
+         for shift_i_value in range(-10,10):
+            print"values by which whole ref curve is shifted along X ",shift_i_value
+            # shifting ref curve by shift_i_value and updating new shifted information in x_new_ref and checking chi-square
+            x_new_ref = []
+            x_new_ref_graph = []
+            y_new_ref = []
+            y_new_ref_graph = []
+    
+            for i in range (np_ref):                
+                 if i in range(valley_ref-15, valley_ref_second+15) : 
+                   x_ref_shift = x_ref[i+ shift_i_value]
+                   y_ref_shift = y_ref[i+shift_i_value]
+                 else :
+                  x_ref_shift = x_ref[i] 
+                  y_ref_shift = y_ref[i] 
+                 x_new_ref.append(x_ref_shift)
+                 y_new_ref.append(y_ref_shift)
+    
+            shift_i_value_list.append(float(shift_i_value)) 
+            print" graph all values after shifting Ar peak" 
+             
+            for i in range(valley_ref-shift_i_value, valley_ref_second-shift_i_value):
+              print"({},{},{})".format(i, x_new_ref[i],y_new_ref[i]), 
+             
+            
+            # checking chi-square now
+            chi_square_Ar = 0 
+            length_range_Ar = 0 
+            
+            # Chi-square for Ar peak
+            for it in range(valley_org, peak_org): 
+              length_range_Ar+=1
+              print"y_ref and y_org",y_new_ref[it]," -  ",y_org[it], " :  x_ref and x_org ",x_new_ref[it]," - ",x_org[it]  
+              chi_square_Ar = float(chi_square_Ar+ (pow((y_new_ref[it] - y_org[it]),2)/(pow( (0.05*y_org[it]) ,2))))
+              print"chi_square ",chi_square_Ar
+            print " total chi square ",chi_square_Ar 
+            chi_square_ndf_Ar = chi_square_Ar/(length_range_Ar -1)
+            chi_square_list_Ar.append(chi_square_ndf_Ar)
+            print"chi_square per ndf ",chi_square_ndf_Ar 
+
+
+         # shift we define to just check chi-square
+         chi_square_list_Co2=[]
+         chi_plot_Co2 = TGraph()
+         
+         shift_i_value_list_CO2 = []
+         #shifting for CO2
+         for shift_i_value_CO2 in range(-32,5):
+            print"values by which whole ref curve is shifted along X ",shift_i_value_CO2
+            # shifting ref curve by shift_i_value and updating new shifted information in x_new_ref and checking chi-square
+            x_new_ref = []
+            x_new_ref_graph = []
+            y_new_ref = []
+            y_new_ref_graph = []
+    
+            for i in range (np_ref):                
+                 if i in range(valley_ref_CO2 -35 , valley_ref_second_CO2+35): 
+                   x_ref_shift = x_ref[i+shift_i_value_CO2]
+                   y_ref_shift = y_ref[i+shift_i_value_CO2]
+                 else :
+                  x_ref_shift = x_ref[i] 
+                  y_ref_shift = y_ref[i] 
+                 x_new_ref.append(x_ref_shift)
+                 y_new_ref.append(y_ref_shift)
+    
+            shift_i_value_list_CO2.append(float(shift_i_value_CO2)) 
+ 
+            print" graph all values after shifting CO2 peak" 
+             
+            for i in range(valley_ref_CO2-shift_i_value_CO2, valley_ref_second_CO2-shift_i_value_CO2):
+              print"({},{},{})".format(i, x_new_ref[i],y_new_ref[i]), 
+ 
+            chi_square_Co2 = 0
+            length_range_Co2 = 0
+            # Chi-square for Co2 peak
+            for it in range(valley_org_CO2, peak_org_CO2): 
+              length_range_Co2+=1
+              print"y_ref and y_org",y_new_ref[it]," -  ",y_org[it]," :  x_ref and x_org ",x_new_ref[it]," - ",x_org[it]  
+              chi_square_Co2 = float(chi_square_Co2+ (pow((y_new_ref[it] - y_org[it]),2)/(pow((0.05 * y_org[it]),2))))
+              print"chi_square Co2 ",chi_square_Co2
+            print " total chi square Co2 ",chi_square_Co2 
+            chi_square_ndf_Co2 = chi_square_Co2/(length_range_Co2 -1)
+            chi_square_list_Co2.append(chi_square_ndf_Co2)
+            print "chi_square per ndf _Co2",chi_square_ndf_Co2 
+            
+            #exiting the shift i value loop
+
+         # make chi square value plot
+         print"type chi square ", type(chi_square_ndf_Ar)
+       
+         for i in range(0,20):
+           print " i value and chi square list " , i, shift_i_value_list[i], chi_square_list_Ar[i]
+           chi_plot_Ar.SetPoint(i,shift_i_value_list[i], chi_square_list_Ar[i])
+         canvas_chi_square_Ar = TCanvas("chi_square_shift_x : Ar","canvas_chi_square_Ar",1200,800)
+         chi_plot_Ar.GetXaxis().SetRangeUser(-17,17)
+         chi_plot_Ar.SetMarkerColor(2)
+         chi_plot_Ar.SetMarkerSize(2)
+         chi_plot_Ar.SetMarkerStyle(8)
+         chi_plot_Ar.GetYaxis().SetRangeUser(0,100000)
+         canvas_chi_square_Ar.SetLogy()
+         chi_plot_Ar.Draw("AP*")
+         canvas_chi_square_Ar.SaveAs("chi_square_Ar.pdf") 
+         print"i values at peak  ref, valley, second valley_Ar : ",peak_ref,"  ",valley_ref, "  ",valley_ref_second
+
+         min_chi_square_Ar = min(chi_square_list_Ar)
+         index_min_chi_square_Ar = chi_square_list_Ar.index(min_chi_square_Ar)
+
+         print"minimum chi-square is with shift value Ar  ",index_min_chi_square_Ar," with chi-square ",min_chi_square_Ar
+ 
+
+            # make chi square value plot
+
+         for i in range(0,35):
+          print " i value and chi square list " , i, shift_i_value_list_CO2[i], chi_square_list_Co2[i]
+          chi_plot_Co2.SetPoint(i,shift_i_value_list_CO2[i], chi_square_list_Co2[i])
+         canvas_chi_square_Co2 = TCanvas("chi_square_shift_x : Co2","canvas_chi_square_Co2",1200,800)
+         chi_plot_Co2.SetMarkerColor(2)
+         chi_plot_Co2.GetXaxis().SetRangeUser(-35,10)
+         chi_plot_Co2.SetMarkerSize(2)
+         chi_plot_Co2.SetMarkerStyle(8)
+         chi_plot_Co2.GetYaxis().SetRangeUser(0,100000)
+         canvas_chi_square_Co2.SetLogy()
+         chi_plot_Co2.Draw("AP*")
+         canvas_chi_square_Co2.SaveAs("chi_square_Co2.pdf") 
+         print"i values at peak  ref, valley, second valley : ",peak_ref_CO2,"  ",valley_ref_CO2, "  ",valley_ref_second_CO2
+
+         # peak minimum chi-square shift value
+
+         min_chi_square_Co2 = min(chi_square_list_Co2)
+         index_min_chi_square_Co2 = chi_square_list_Co2.index(min_chi_square_Co2)
+
+         print"minimum chi-square is with shift value  Co2 ",index_min_chi_square_Co2," with chi-square ",min_chi_square_Co2
+
+         
+         #changing the peak and valley for Ar peak according to the shift: we can run setPeak function again, but it will be too much maybe so I am just changing the peak and valley position by knowing the shift to make
+        # peak minimum chi-square shift value
+
+ 
+         opt_shift_value = shift_i_value_list[index_min_chi_square_Ar]
+         opt_shift_value_CO2 = shift_i_value_list_CO2[index_min_chi_square_Co2]
+         print"values by which Ar ref peak shifted along X ",opt_shift_value
+         print"values by which CO2 ref peak shifted along X ",opt_shift_value_CO2
+
+         print " shifting for optimum shift : valleys now before shifting",valley_ref, " second " ,valley_ref_second 
+         print " shifting for optimum shift : peak now before shifting",peak_ref
+         print " shifting for Ar peak " 
          if not(name_ref in self.gcsets.keys()) or not (column in self.gcsets[name_ref].graphs.keys()):
-             print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
-             return
-         self.gcsets[name_ref].shiftGC_peakAr(column, shift_value, valley_ref, valley_ref_second) 
+              print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
+              return
+         self.gcsets[name_ref].shiftGC_peak(column, int(opt_shift_value), valley_ref, valley_ref_second) 
+
+         print " shifting for CO2 peak " 
+         if not(name_ref in self.gcsets.keys()) or not (column in self.gcsets[name_ref].graphs.keys()):
+              print "can't find ", name_ref, ", column ", column, " in data; doing nothing"
+              return
+         self.gcsets[name_ref].shiftGC_peak(column, int(opt_shift_value_CO2), valley_ref_CO2, valley_ref_second_CO2) 
+         #self.gcsets[name_ref].shiftGC_peak(column, int(4), valley_ref_CO2, valley_ref_second_CO2) 
+
 
          x_ref,y_ref,np_ref=self.gcsets[name_ref].graphs[column].GetX(),self.gcsets[name_ref].graphs[column].GetY(),self.gcsets[name_ref].graphs[column].GetN()
          xn_ref,yn_ref,npn_ref=self.gcsets[name_ref].avgraphs[column].GetX(),self.gcsets[name_ref].avgraphs[column].GetY(),self.gcsets[name_ref].avgraphs[column].GetN()
-         
-#         valley_ref = valley_ref + (peak_org - peak_ref)
-#         peak_ref  = peak_ref + (peak_org-peak_ref)
-         # shift we define to just check chi-square
-         shift_i_value = peak_org-peak_ref
-         print "shift_i _value ", shift_i_value
-         chi_square = 0 
-         length_range = 0
-         for i in range(valley_ref, peak_ref+shift_i_value): 
-           length_range+=1
-           print"y_ref and y_org",y_ref[i-shift_i_value]," -  ",y_org[i]
-           chi_square = chi_square+ (pow((y_ref[i-shift_i_value] - y_org[i]),2)/y_org[i])
-           print"chi_square ",chi_square
-         print " total chi square ",chi_square 
-         chi_square_ndf = chi_square/(length_range -1)
-         print"chi_square per ndf ",chi_square_ndf 
 
-         #changing the peak and valley for Ar peak according to the shift: we can run setPeak function again, but it will be too much maybe so I am just changing the peak and valley position by knowing the shift to make
+         valley_ref = valley_ref -  int(opt_shift_value)
+         valley_ref_second = valley_ref_second - int(opt_shift_value)
+         peak_ref = peak_ref - int(opt_shift_value) 
 
-         print"i values at peak  ref, valley, second valley : ",peak_ref,"  ",valley_ref, "  ",valley_ref_second
-#         self.gcsets[name_ref].peaks[column][0][1] = x_ref[peak_ref]+ (shift_value)
-#         self.gcsets[name_ref].width[column][0][1] = x_ref[valley_ref]+ (shift_value)
-#         self.gcsets[name_ref].width[column][1][1] = x_ref[valley_ref_second] + (shift_value)
-#         self.gcsets[name_ref].peaks[column][0][2] = peak_ref - (shift_i_value)
-#         self.gcsets[name_ref].width[column][0][2] = valley_ref - (shift_i_value)
-#         self.gcsets[name_ref].width[column][1][2] = valley_ref_second - (shift_i_value)
+         valley_ref_CO2 = valley_ref_CO2 -  int(opt_shift_value_CO2)
+         valley_ref_second_CO2 = valley_ref_second_CO2 - int(opt_shift_value_CO2)
+         peak_ref_CO2 = peak_ref_CO2 - int(opt_shift_value) 
 
-# lets change the peak reference point also since it is confusing in last
-           
 
-#
-#        # evaluating chi-square
-#
-#         new_peak_x_ref = self.gcsets[name_ref].peaks[column][0][2]
-#         new_valley_x_ref = self.gcsets[name_ref].width[column][0][2]
-#         new_valley_second_x_ref = self.gcsets[name_ref].width[column][1][2]
-
-#         print " new peak points , valley, second valley points", new_peak_x_ref, " ", new_valley_x_ref, " ", new_valley_second_x_ref
-         # print ref curve peak x and y value after scaling Ar peak
-         print"ref curve peak value after scaling x- y"
+         print"ref curve peak value after shifting x- y"
          print"({},{})".format(x_ref[peak_ref],y_ref[peak_ref])
-
 
          print"peak reference curves"
          print" (i,x,y) : ({},{},{}) ".format(peak_ref, x_ref[peak_ref], y_ref[peak_ref])
@@ -634,5 +961,10 @@ class plots(object):
          print"second valley reference curves"
          print" (i,x,y) : ({},{},{}) ".format(valley_ref_second, x_ref[valley_ref_second], y_ref[valley_ref_second])
 
-    def setPeak_positions_ref(self,name_ref, column,x_range):
+ 
+    def setPeak_positions_ref(self,name_ref, column,x_range,peakName):
         self.gcsets[name_ref].setPeak(column,x_range)
+        self.gcsets[name_ref].peakNames[column][0] = "Argon"
+        self.gcsets[name_ref].peakNames[column][1] = "CO2"
+
+

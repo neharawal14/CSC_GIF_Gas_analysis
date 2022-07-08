@@ -25,26 +25,27 @@ class GSset(object):
     '''
     classdocs
     '''
-    gcsets    = {};
-    canvases  = {};
-    graphcount= {};
-    legends   = {};
-    #graphsets = {};
-    colours = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
-    ncolours = 6
 
     def __init__(self, files_or_dir, dir_flag, verb, pdfname):
         '''
         Constructor
         '''
-        self.output='Plot.root'
-        temp=TFile(self.output,"RECREATE")
-        temp.Close()
+        self.gcsets    = {};
+        self.canvases  = {};
+        self.graphcount= {};
+        self.legends   = {};
+        #graphsets = {};
+        self.colours = [ROOT.kRed,ROOT.kBlue,ROOT.kMagenta+1,ROOT.kViolet+7,ROOT.kTeal+3,ROOT.kOrange+3]
+        self.ncolours = 6
+
+        #self.output='Plot.root'
+        #temp=TFile(self.output,"RECREATE")
+        #temp.Close()
         gStyle.SetOptTitle(1);
         if dir_flag:
             print "opening directory ", files_or_dir
-            list_of_files = [(files_or_dir+"/"+f) for f in os.listdir(files_or_dir) if os.path.isfile(files_or_dir+"/"+f)]
-            #print list_of_files
+            list_of_files = [(files_or_dir+"/"+f) for f in os.listdir(files_or_dir) ]
+            print "here  ",list_of_files
         else:
             print "files or dir ", files_or_dir
             list_of_files = files_or_dir.split(",")
@@ -86,17 +87,17 @@ class GSset(object):
         print "Setting peaks for",name,"column",column
         self.gcsets[name].normalize(column,x_range) #Set minimum point within range specified to 1000
         self.gcsets[name].setPeak(column,x_range) #Set peaks
-        self.setPeakName(name,column,-1,peakName) #Set peak names that are specified
         self.gcsets[name].getIntegral_modified(column) #Get the integrals of the peaks
+        self.setPeakName(name,column,-1,peakName) #Set peak names that are specified
 
     def setPeakName(self,name,column,nPeak,peakName):
         if nPeak == -1:
             nPeak = len(self.gcsets[name].peaks[column])
-            for i in range(nPeak-1):
+            for i in range(nPeak):
                 self.gcsets[name].peakNames[column][i] = peakName[i]
 
-        else:
-             self.gcsets[name].peakNames[column][i] = peakName   
+        #else:
+        ##     self.gcsets[name].peakNames[column][i] = peakName   
         
     def shiftGC(self, name, column):
         if not(name in self.gcsets.keys()) or not(column in self.gcsets[name].graphs.keys()) :
@@ -248,7 +249,9 @@ class GSset(object):
         rfile.Close()
                    
     def plotMulti(self,name,column):
-        cname=name+"_"+column
+        if name.endswith('.AXY'):
+         name_new = name[:-4]
+        cname=name_new+"_"+column
         if not (name in self.gcsets.keys()) or not(column in self.gcsets[name].graphs.keys()):
             print "can't find ", name, ", column ", column, " in data; doing nothing"
             return
@@ -309,13 +312,15 @@ class GSset(object):
             s=maxI-len(integral)+2
             integral=" "*s+integral
             
-            leg.AddEntry(gPeak[i],self.gcsets[name].peakNames[column][i]+": "+integral+" #pm ^{"+integral_error[0]+"}_{"+integral_error[1]+"} | "+percentage+" #pm ^{"+perc_error[0]+"}_{"+perc_error[1]+"}%","p")
+            #leg.AddEntry(gPeak[i],self.gcsets[name].peakNames[column][i]+": "+integral+" #pm ^{"+integral_error[0]+"}_{"+integral_error[1]+"} | "+percentage+" #pm ^{"+perc_error[0]+"}_{"+perc_error[1]+"}%","p")
+            leg.AddEntry(gPeak[i],self.gcsets[name].peakNames[column][i]+": "+integral+" | "+percentage+"%","p")
 
         self.gcsets[name].multi[column].Add(gWidth,"p")
         logMulti.Add(gnWidth,"p")
         self.gcsets[name].multi[column].SetName(name)
 
-        rfile = TFile(self.output,"update")
+        self.output = "Plot_" + name_new + ".root"
+        rfile = TFile(self.output,"RECREATE")
         print "creating canvas ", cname            
         self.canvases[cname] = TCanvas(cname, cname, 1200, 800)
         if not rfile.GetDirectory("GC"): rfile.mkdir("GC")

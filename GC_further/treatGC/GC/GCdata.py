@@ -3,23 +3,27 @@ Created on 21 Nov 2016
 
 @author: kkuzn
 '''
+import pickle
 from ROOT import TGraph
 from ROOT import TMultiGraph
 from ROOT import TH1F
 from ROOT import TF1
+import math
 class GCdata(object):
     '''
     classdocs
     '''
-    names = ["A", "B", "C"]
 
     def __init__(self, fname):
         '''
         Constructor
         '''
+        self.names = ["A", "B", "C"]
         self.graphs    = {}
+        self.graphs_new    = {}
         self.multi     = {}
         self.avgraphs  = {}
+        self.avgraphs_new  = {}
         self.ranges    = {}
         self.peaks     = {}
         self.peakNames = {}
@@ -33,7 +37,7 @@ class GCdata(object):
         self.interror  = {}
         self.sums      = {}
         self.yHisto    = {}
-        
+        self.text_file = open('scaling_values.txt',"a")
         try:
             with open(fname, 'r') as f:
                 read_data = f.readlines()
@@ -55,9 +59,12 @@ class GCdata(object):
             self.multi[self.names[i]]=TMultiGraph()
             self.multi[self.names[i]].SetTitle(self.names[i])
             self.graphs[self.names[i]]=TGraph()
+            self.graphs_new[self.names[i]]=TGraph()
             self.ranges[self.names[i]]=[100000000000000, -100000000000000]
             self.graphs[self.names[i]].SetName(self.names[i])
             self.graphs[self.names[i]].SetTitle(self.names[i])
+            self.graphs_new[self.names[i]].SetName(self.names[i])
+            self.graphs_new[self.names[i]].SetTitle(self.names[i])
             self.graphs[self.names[i]].SetMarkerStyle(20)
             self.graphs[self.names[i]].SetMarkerSize(0.5)
         for datastring in read_data:
@@ -65,6 +72,7 @@ class GCdata(object):
             for i in range (0,N-1):                
                 np  = self.graphs[self.names[i]].GetN()
                 val = float(dset[i+1])
+                #print"************************************************************************ np ***********************************", np
                 self.graphs[self.names[i]].SetPoint(np, float(dset[0]), val)
                 #print i, np, dset[0], dset[i+1]
                 #min max
@@ -88,21 +96,29 @@ class GCdata(object):
         x  = self.graphs[column].GetX()
         y  = self.graphs[column].GetY()
         self.avgraphs[column]=TGraph()
+        self.avgraphs_new[column]=TGraph()
+        self.yHisto[column] = []
 
 #        print" graph all values before anything" 
 #        for i in range(np):
 #         print(x[i]),
-        #min_y=self.graphs[column].GetYaxis().GetXmin()
-        #print("minimum voltage value",min_y)
+       #min_y=self.graphs[column].GetYaxis().GetXmin()
+       #print("minimum voltage value",min_y)
+
+       # for the moments lets not shift anything in avgraph
         y_list = [ y[i] for i in range(np) if x_range[0] <=  x[i] <= x_range[1]] #make a list of y values in the desired range
         self.yHisto[column]=TH1F("y_value_"+column,"",50000,min(y_list),max(y_list)) 
         for i in range(len(y_list)):self.yHisto[column].Fill(y_list[i])
         min_y2=self.yHisto[column].GetXaxis().GetBinCenter(self.yHisto[column].GetMaximumBin()) #Get most common y value
         #print ("minimum y value from which we are normalizing",min_y2)
         yshift = [y[i]-min_y2+1000 for i in range(np)] #Shift all y values to the required values
+
+#        print " y shifted value over whole spectrum for avg graphs in normalize function "
+        for i in range(np):
+#          print" normalize : avgraph ({},{},{})".format(i, x[i],yshift[i])
+           self.avgraphs[column].SetPoint(i,x[i],yshift[i])
         #print("first few y values after normalizing")
         #print(yshift[0], "  ", yshift[1], "  ", yshift[200]) 
-        for i in range(np):self.avgraphs[column].SetPoint(i,x[i],yshift[i])
         
 #        for i in range(50):print " all x-y  values in start for column ({},{})".format(x[i],y[i]), column
 #        self.avgraphs[column].SetName(self.graphs[column].GetName())
@@ -312,12 +328,12 @@ class GCdata(object):
 #          print(x[i]),
  
 
-        for iV in range(len(self.peaks[column])):
-          print("peak x here: ",self.peaks[column][iV][0])
-          print("peak y here: ",self.peaks[column][iV][1] )
-        for iV in range(len(self.valleys[column])):
-          print("valley x here: ",self. valleys[column][iV][0])
-          print("valley y here: ",self.valleys[column][iV][1] )
+#        for iV in range(len(self.peaks[column])):
+#          print("peak x here: ",self.peaks[column][iV][0])
+#          print("peak y here: ",self.peaks[column][iV][1] )
+#        for iV in range(len(self.valleys[column])):
+#          print("valley x here: ",self. valleys[column][iV][0])
+#          print("valley y here: ",self.valleys[column][iV][1] )
         
         # popping out valleys and a peak and a flat for original curve
         if(len(self.peaks[column])==3):
@@ -356,7 +372,7 @@ class GCdata(object):
             if(first_point == 0): 
               self.first_point_x = x[i_i]  
               self.first_point_y = y[i_i]
-              first_point = 1;
+              first_point = 1
             print("valley x here : ",x[i_i], " , ", x[i_f])
             print("valley y here : ",y[i_i], " , ", y[i_f])
             #Uncertainty in  x                    y       i
@@ -374,35 +390,72 @@ class GCdata(object):
             slope =  (y[i_f]-y[i_i])/(x[i_f]-x[i_i])
             y_baseline= []
             print"slope of the line to find integral when nPeaks are",len(self.peaks[column]), " is :", slope
-           # defining a baseline with a line joining the two valleys
-            for j in range(np):
-              if j in range(i_i, i_f):
-#                to insert some value in the y_baseline before i_i and after i_f we use if j=i_i and j=i_f
-                 y_baseline_value = slope*(x[j]-x[i_i]) + y[i_i]
-                 if j==i_i : y_baseline.append(y_baseline_value)
-                 y_baseline.append(y_baseline_value)
-                 if j==i_f : y_baseline.append(y_baseline_value)
-                 dx = x[j+1]-x[j]
-                 integral+=(y[j]-y_baseline_value)*dx
-              else: 
-                 y_baseline.append(0)
+
+            # defining a baseline with a line joining the two valleys
+            for j in range(i_i,i_f):
+               #to insert some value in the y_baseline  after i_f we use if j=i_f
+               y_baseline_value = slope*(x[j]-x[i_i]) + y[i_i]
+               dx = x[j+1]-x[j]
+               integral+=( ( (y[j]+y[j+1])/2) - y_baseline_value)*dx
+
+            print "y baselines values in the slope lines  "
+            for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
+                dx=(x[j+1]-x[j])
+                slope =  (y[i_f+i_f_e[0]]-y[i_i-i_i_e[0]])/(x[i_f+i_f_e[0]]-x[i_i-i_i_e[0]])
+                y_baseline_value = slope*(x[j]-x[i_i]) + y[i_i]
+                integralUp+=(y[j]-y_baseline_value)*dx
+
+            for j in range(i_i+i_i_e[1],i_f-i_f_e[1]):
+                slope =  (y[i_f-i_f_e[0]]-y[i_i+i_i_e[0]])/(x[i_f-i_f_e[0]]-x[i_i+i_i_e[0]])
+                y_baseline_value = slope*(x[j]-x[i_i]) + y[i_i]
+                dx=(x[j+1]-x[j])
+                integralDo+=(y[j]-y_baseline_value)*dx
+
+            # evaluating error in integration
+#            for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
+#                dx=(x[j+1]-x[j])
+#                slope =  (y[i_f+i_f_e[0]]-y[i_i-i_i_e[0]])/(x[i_f+i_f_e[0]]-x[i_i-i_i_e[0]])
+#                y_baseline_value = slope*(x[j+1]-x[i_i]) + y[i_i]
+#                integralUp+=(y[j]-y_baseline_value)*dx
+#
+#            for j in range(i_i+i_i_e[1],i_f-i_f_e[1]):
+#                slope =  (y[i_f-i_f_e[0]]-y[i_i+i_i_e[0]])/(x[i_f-i_f_e[0]]-x[i_i+i_i_e[0]])
+#                y_baseline_value = slope*(x[j]-x[i_i]) + y[i_i]
+#                dx=(x[j+1]-x[j])
+#                integralDo+=(y[j]-y_baseline_value)*dx
+#
+
+#            for j in range(np):
+#              if j==i_i-i_i_e[0]:
+#              # to insert some value in the y_baseline before i_i  we use if j=i_i 
+#                y_baseline_value = y[i_i]
+#                y_baseline.append(y_baseline_value)
+#              elif j in range(i_i, i_f):
+#                 #to insert some value in the y_baseline  after i_f we use if j=i_f
+#                 y_baseline_value = slope*(x[j]-x[i_i]) + y[i_i]
+#                 y_baseline.append(y_baseline_value)
+#                 if j==i_f : y_baseline.append(y_baseline_value)
+#                 dx = x[j+1]-x[j]
+#                 integral+=(y[j]-y_baseline_value)*dx
+#              else: 
+#                 y_baseline.append(0)
             #print"j range : ",i_i," ",i_f
 #           for j in range(i_i,i_f):
 #                dx=(x[1]-x[0])
 #                integral+=(y[j]-base)*dx
 
             #calculating Up and Down from shifting bounds in and out from the peak
-            print "y baselines values in the slope lines  "
-            for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
-              print"({},{})".format(x[j],y_baseline[j]),
-            for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
-                #print" values j ",j
-                dx=(x[j+1]-x[j])
-                integralUp+=(y[j]-y_baseline[j])*dx
-
-            for j in range(i_i+i_i_e[1],i_f-i_f_e[1]):
-                dx=(x[j+1]-x[j])
-                integralDo+=(y[j]-y_baseline[j])*dx
+    #            print "y baselines values in the slope lines  "
+    #            for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
+    #              print"({},{})".format(x[j],y_baseline[j]),
+    #            for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
+    #                #print" values j ",j
+    #                dx=(x[j+1]-x[j])
+    #                integralUp+=(y[j]-y_baseline[j])*dx
+    #
+    #            for j in range(i_i+i_i_e[1],i_f-i_f_e[1]):
+    #                dx=(x[j+1]-x[j])
+    #                integralDo+=(y[j]-y_baseline[j])*dx
 
 #           for j in range(i_i-i_i_e[0],i_f+i_f_e[0]):
 #                dx=(x[1]-x[0])
@@ -417,6 +470,9 @@ class GCdata(object):
             print "integral value for column ", column, "integral ", integral
             
         self.sums[column]=0.0
+        
+        print"integral errors Ar ",self.interror[column][0]
+        print"integral errors Co2 ",self.interror[column][1]
         for i in self.integrals[column]:
             self.sums[column]+=i
 
@@ -519,21 +575,76 @@ class GCdata(object):
         if not(column in self.graphs.keys()):
             print "can't find graph ", column, "doing nothing"
             return
+        # shifting also the graph points
+        np_graph  = self.graphs[column].GetN()
+        x_graph   = self.graphs[column].GetX()
+        y_graph   = self.graphs[column].GetY()
+        print "shift value ", shift_graph
+        print "number of values",np_graph
+        print "column",column
+
+        for i in range(2000,2010):
+             print "i -  x - y values ({},{},{}) ".format(i, x_graph[i], y_graph[i])
+        print("*********y shifted values *******")
+        for i in range(0,np_graph):                
+             y_shifted_graph = y_graph[i]-shift_graph
+             print(y_shifted_graph, " type x ",x_graph[i], " type y ",y_shifted_graph)
+             self.graphs_new[column].SetPoint(i,x_graph[i],y_shifted_graph)
+             if(i>2000 and i<2011):
+              print "i -  x - y values after shifting graphs ({},{},{}) ".format(i, x_graph[i], y_shifted_graph)
+        print " after shifting number of values graphs", np_graph
+ 
         np  = self.avgraphs[column].GetN()
         x   = self.avgraphs[column].GetX()
         y   = self.avgraphs[column].GetY()
         print "shift value ", shift_avgraph
         print "number of values",np
         print "column",column
+        print " average graph values before shifting " 
+        #for i in range(2000,2010):
+        #     print "i -  x - y avgraphs values before shifting to common baseline ({},{},{}) ".format(i, x[i], y[i])
+        for i in range (0,np): 
+             y_shifted = y[i]-shift_avgraph
+             self.avgraphs_new[column].SetPoint(i,x[i],y_shifted)
+             if(i>2000 and i<2011):
+              print "i -  x - y values after shifting avgraphs ({},{},{}) ".format(i, x[i], y_shifted)
+        
+        print" after shifting number of values avgraphs", np
 
+      
+
+# this function is to scale the Ar peak along y axis to match with the original curve
+#peak_org_graphs , peak_org_avgraphs: peak point value for the original curve
+#base_org_graphs , base_org_avgraphs : valley point value for the original curve
+#peak_ref : peak point for the reference curve
+#base_ref : valley point for the ref curve
+#second_valley_ref_point : second valley point for the ref curve
+    def shiftGraph_CO2(self, column, shift_graph, shift_avgraph, second_valley, third_valley):
+        if not(column in self.graphs.keys()):
+            print "can't find graph ", column, "doing nothing"
+            return
+        np  = self.avgraphs[column].GetN()
+        x   = self.avgraphs[column].GetX()
+        y   = self.avgraphs[column].GetY()
+        print "shift value ", shift_avgraph
+        print "number of values",np
+        print "column",column
+        print " average graph values before shifting " 
+#        for i in range(np):
+#           print "check here {},{} ".format(x[i] , y[i])
 
         for i in range(2000,2010):
              print "i -  x - y avgraphs values before shifting to common baseline ({},{},{}) ".format(i, x[i], y[i])
-        for i in range (np):                
+        for i in range (0,np): 
+           if i in range(second_valley, np):
              y_shifted = y[i]-shift_avgraph
-             self.avgraphs[column].SetPoint(i,x[i],y_shifted)
+             self.avgraphs_new[column].SetPoint(i,x[i],y_shifted)
              if(i>2000 and i<2011):
               print "i -  x - y values after shifting avgraphs ({},{},{}) ".format(i, x[i], y_shifted)
+
+           else :
+              y_shifted = y[i]
+              self.avgraphs_new[column].SetPoint(i,x[i],y_shifted)
         
         print" after shifting number of values avgraphs", np
 
@@ -548,21 +659,19 @@ class GCdata(object):
         for i in range(2000,2010):
              print "i -  x - y values ({},{},{}) ".format(i, x_graph[i], y_graph[i])
         for i in range (np_graph):                
+           if i in range(second_valley, np_graph):
              y_shifted_graph = y_graph[i]-shift_graph
              self.graphs[column].SetPoint(i,x_graph[i],y_shifted_graph)
              if(i>2000 and i<2011):
               print "i -  x - y values after shifting graphs ({},{},{}) ".format(i, x_graph[i], y_shifted_graph)
+
+           else : 
+             y_shifted = y_graph[i]
+             self.graphs[column].SetPoint(i,x[i],y_shifted)
+
         print " after shifting number of values graphs", np_graph
-       
-
-# this function is to scale the Ar peak along y axis to match with the original curve
-#peak_org_graphs , peak_org_avgraphs: peak point value for the original curve
-#base_org_graphs , base_org_avgraphs : valley point value for the original curve
-#peak_ref : peak point for the reference curve
-#base_ref : valley point for the ref curve
-#second_valley_ref_point : second valley point for the ref curve
-
-    def scaleGC_peakAr(self, column, peak_org_graphs,base_org_graphs, peak_org_avgraphs, base_org_avgraphs, peak_ref, base_ref, second_valley_ref_point):
+ 
+    def scaleGC_peak(self, column, peak_org_graphs,base_org_graphs, peak_org_avgraphs, base_org_avgraphs, peak_ref, base_ref, second_valley_ref_point):
         if not(column in self.avgraphs.keys()):
             print "can't find graph ", column, "doing nothing"
             return
@@ -576,10 +685,16 @@ class GCdata(object):
  #       print" graph all values when before scaling" 
  #       for i in range(np):
  #         print(x_graph[i]), 
- 
+
+        print " before scaling " 
+        print " base org graph and peak org graph : peak :  ",peak_org_graphs, " base : ",base_org_graphs 
+        print " base org avgraph and peak org avgraph : peak :  ",peak_org_avgraphs, " base : ",base_org_avgraphs 
         print" graph all values between first peak and valley  when before scaling" 
         for i in range(base_ref, second_valley_ref_point):
           print"({},{})".format(x_graph[i],y_graph[i]), 
+        print" av graph all values between first peak and valley  when before scaling" 
+        for i in range(base_ref, second_valley_ref_point):
+         print"({},{})".format(x[i],y[i]), 
  
 #        for i in range(np): 
 #            self.avgraphs[column].SetPoint(i,0.0,0.0)
@@ -599,10 +714,25 @@ class GCdata(object):
 
         y_scaled_graph=[]
         y_scaled = []
+        print " base lll value ",base_ref 
+        print " second ref  lll value ",second_valley_ref_point 
+
+        self.text_file.write(' scale factor by which curve scaled Ar and CO2 :  ')
+        scale_value = (peak_org_graphs-base_org_graphs)/(y_graph[peak_ref]-y_graph[base_ref]) 
+        scale_value_file = repr(scale_value)
+        self.text_file.write(scale_value_file)
+
+
         # scaling only the points that are between base ref and second valley ref point, other points remains the same
         # for the purporse of graphs
         for i in range (np_graph):                
              if i in range(base_ref, second_valley_ref_point):
+                A_v = ( y_graph[i]-y_graph[base_ref])
+                B_v = (peak_org_graphs-base_org_graphs)
+                C_v = (y_graph[peak_ref]-y_graph[base_ref]) 
+                print " in graph A : ",A_v
+                print " in graph B : ",B_v
+                print " in graph C : ",C_v
                 scale_factor =  (( y_graph[i]-y_graph[base_ref]) * ((peak_org_graphs-base_org_graphs)/(y_graph[peak_ref]-y_graph[base_ref]) ))
                 y_scaled_graph_value = y_graph[base_ref]+ (( y_graph[i]-y_graph[base_ref]) * ((peak_org_graphs-base_org_graphs)/(y_graph[peak_ref]-y_graph[base_ref])))
                 y_scaled_graph.append(y_scaled_graph_value)
@@ -614,34 +744,151 @@ class GCdata(object):
              if(i>2000 and i<2011):   print "i -  x - y values after scaling graphs ({},{},{}) ".format(i, x_graph[i], y_scaled_graph[i])
 #            print "i -  x - y values ({},{},{}) ".format(i, x[i], y[i])
 #            print "i -  x- y shifted ({}, {},{})".format(i, x[i], y_shifted[i])
- 
+        print " avg graph base y value ",y[base_ref] 
+        print " base lll value ",base_ref 
+        print " second ref  lll value ",second_valley_ref_point 
         # for the purporse of avgraphs
-        for i in range (np):                
+        for i in range (np):     
              if i in range(base_ref, second_valley_ref_point):
-                y_scaled_value = y[base_ref]+ (( y[i]-y[base_ref]) * ((peak_org_avgraphs-base_org_avgraphs)/(y[peak_ref]-y[base_ref])))
+                A_v_2 = ( y[i]-y[base_ref])
+                B_v_2= (peak_org_avgraphs-base_org_avgraphs)
+                C_v_2 = (y[peak_ref]-y[base_ref]) 
+                print " in avgraph A : ",A_v_2
+                print " in avgraph B : ",B_v_2
+                print " in avgraph C : ",C_v_2
+                scale_factor_new = (( y[i]-y[base_ref]) * ((peak_org_avgraphs-base_org_avgraphs)/(y[peak_ref]-y[base_ref]) ))
+                y_scaled_value = y[base_ref] + scale_factor_new
+                print "y avg graph in the peak ",y_scaled_value
                 y_scaled.append(y_scaled_value)
              else : 
+                scale_factor_new = 4
                 y_scaled_value = y[i]
+                print " y avg graph ",y_scaled_value
                 y_scaled.append(y_scaled_value)
+             if(i>2000 and i<2010) : print "  scale factor new avgraphs ", scale_factor_new
              if(i>2000 and i<2010) : print "i -  x - y values after scaling avgraphs ({},{},{}) ".format(i, x[i], y_scaled[i])
-             if(i>2000 and i<2011) : print "i -  x - y values after scaling avgraphs ({},{},{}) ".format(i, x[i], y_scaled[i])
 #            print "i -  x - y values ({},{},{}) ".format(i, x[i], y[i])
 #            print "i -  x- y shifted ({}, {},{})".format(i, x[i], y_shifted[i])
 
-        for i in range(base_ref, second_valley_ref_point):
+#        for i in range(base_ref, second_valley_ref_point):
+#             self.graphs[column].SetPoint(i,x_graph[i],y_scaled_graph[i])
+#        for i in range(base_ref, second_valley_ref_point):
+#             self.avgraphs[column].SetPoint(i,x[i],y_scaled[i])
+        for i in range(np_graph):
              self.graphs[column].SetPoint(i,x_graph[i],y_scaled_graph[i])
-        for i in range(base_ref, second_valley_ref_point):
+        for i in range(np):
              self.avgraphs[column].SetPoint(i,x[i],y_scaled[i])
+
 
         print" graph all values after scaling between first valley and second valley" 
         for i in range(base_ref, second_valley_ref_point):
           print" ({},{})".format(x_graph[i], y_graph[i]),
 
+
 # this function is to shift Ar peak along x axis : so as to match with original curve
 # shift_Ar_peak : amount by which to shift along x axis
 # base_ref : is the first valley point for the reference curve
 #second_valley_ref : is the second valley point for the reference curve
-    def shiftGC_peakAr(self, column, shift_Ar_peak, base_ref, second_valley_ref):
+    #    def shiftGC_peak(self, column, shift_Ar_peak, base_ref, second_valley_ref):
+    #        if not(column in self.avgraphs.keys()):
+    #            print "can't find graph ", column, "doing nothing"
+    #            return
+    #        np  = self.avgraphs[column].GetN()
+    #        x   = self.avgraphs[column].GetX()
+    #        y   = self.avgraphs[column].GetY()
+    #        np_graph  = self.graphs[column].GetN()
+    #        x_graph   = self.graphs[column].GetX()
+    #        y_graph   = self.graphs[column].GetY()
+    #
+    # 
+    ##        print"base and peak y values for Ar peak in org"
+    ##        print" peak graphs ({})".format(peak_org_graphs)
+    ##        print" valley graphs ({})".format(base_org_graphs)
+    ##        print"base and peak y values for Ar peak in ref"
+    ##        print" peak graphs ({},{})".format(x_graph[peak_ref], y_graph[peak_ref])
+    ##        print" valley graphs ({},{})".format(x_graph[base_ref], y_graph[base_ref])
+    #
+    #
+    #        x_new_ref = []
+    #        x_new_ref_graph = []
+    #        y_new_ref = []
+    #        y_new_ref_graph = []
+    #
+    #
+    #        print" graph all values before shifting for Ar " 
+    #        for i in range(base_ref, second_valley_ref):
+    #         print" ({},{},{})".format(i, x_graph[i], y_graph[i]),
+    #
+    #        for i in range (np):                
+    #          #if i in range(base_ref, second_valley_ref):
+    #           #if i in range(base_ref-shift_value, second_valley_ref-shift_value):
+    #           # x_ref = x[i+shift_Ar_peak]
+    #           # y_ref = y[i+shift_Ar_peak]
+    #           # x_new_ref.append(x_ref)
+    #           # y_new_ref.append(y_ref)
+   #           #else: 
+    #           #  x_new_ref.append(x[i])
+    #           #  y_new_ref.append(y[i])
+    #          
+    #           if(math.copysign(1,shift_Ar_peak) > 0) : 
+    #             # this is for the end points when you shift whole curve
+    #             if( (i+shift_Ar_peak) >= np) : 
+    #               x_ref = x[i]
+    #               y_ref = y[i]
+    #               print " it is called " 
+    #             else : 
+    #               x_ref = x[i+shift_Ar_peak]
+    #               y_ref = y[i+shift_Ar_peak]
+    #             x_new_ref.append(x_ref)
+    #             y_new_ref.append(y_ref)
+    #
+    #           elif(math.copysign(1,shift_Ar_peak) < 0) :
+    #             if( (i+shift_Ar_peak) < 0) : 
+    #               x_ref = x[i] 
+    #               y_ref = y[i]
+    #               print " it is called opposite sign " 
+    #             else : 
+    #               x_ref = x[i+shift_Ar_peak]
+    #               y_ref = y[i+shift_Ar_peak]
+    #             x_new_ref.append(x_ref)
+    #             y_new_ref.append(y_ref)
+    #        
+    #        for i in range(np):
+    #           self.avgraphs[column].SetPoint(i,x_new_ref[i],y_new_ref[i]) 
+    #         
+    #        # for avgraphs
+    #        for i in range (np_graph):                
+    #          if(math.copysign(1,shift_Ar_peak) > 0): 
+    #             # this is for the end points when you shift whole curve
+    #             if( (i+shift_Ar_peak) >= np): 
+    #               x_ref_graph = x_graph[i]
+    #               y_ref_graph = y_graph[i]
+    #             else : 
+    #               x_ref_graph = x_graph[i+shift_Ar_peak]
+    #               y_ref_graph = y_graph[i+shift_Ar_peak]
+    #             x_new_ref_graph.append(x_ref_graph)
+    #             y_new_ref_graph.append(y_ref_graph)
+    #
+    #          elif(math.copysign(1,shift_Ar_peak) < 0):
+    #             if( (i+shift_Ar_peak) < 0): 
+    #               x_ref_graph = x_graph[i] 
+    #               y_ref_graph = y_graph[i]
+    #             else : 
+    #               x_ref_graph = x_graph[i+shift_Ar_peak]
+    #               y_ref_graph = y_graph[i+shift_Ar_peak]
+    #             x_new_ref_graph.append(x_ref_graph)
+    #             y_new_ref_graph.append(y_ref_graph)
+    #        
+    #        for i in range(np):
+    #          self.graphs[column].SetPoint(i,x_new_ref_graph[i],y_new_ref_graph[i]) 
+    #
+    #        print" graph all values after shifting Ar peak" 
+    #         
+    #        for i in range(0, second_valley_ref-shift_Ar_peak):
+    #          print"({},{},{})".format(i, x_new_ref_graph[i],y_new_ref_graph[i]), 
+
+#  functions written again and tweaking now : to shift Ar and CO2 peak separately
+    def shiftGC_peak(self, column, shift_peak, base_ref, second_valley_ref):
         if not(column in self.avgraphs.keys()):
             print "can't find graph ", column, "doing nothing"
             return
@@ -662,39 +909,56 @@ class GCdata(object):
 
 
         x_new_ref = []
-        x_graph_new_ref = []
+        x_new_ref_graph = []
         y_new_ref = []
-        y_graph_new_ref = []
+        y_new_ref_graph = []
 
 
-        print" graph all values before shifting" 
+        print" graph all values before shifting for Ar " 
         for i in range(base_ref, second_valley_ref):
-         print" ({},{})".format(x_graph[i], y_graph[i]),
+         print" ({},{},{})".format(i, x_graph[i], y_graph[i]),
 
         for i in range (np):                
-          if i in range(base_ref, second_valley_ref):
-           x_ref = x[i]+shift_Ar_peak
-           x_new_ref.append(x_ref)
-          else: 
-            x_new_ref.append(x[i])
+         if i in range(base_ref + shift_peak - 20, second_valley_ref+shift_peak+ 20) : 
+             x_ref = x[i]
+             y_ref = y[i+shift_peak]
+         else : 
+              x_ref = x[i]
+              y_ref = y[i]
+         x_new_ref.append(x_ref)
+         y_new_ref.append(y_ref)
         
-#        for i in range(base_ref, second_valley_ref):
         for i in range(np):
-          self.avgraphs[column].SetPoint(i,x_new_ref[i],y[i]) 
-
-        for i in range(np):
-          if i in range(base_ref, second_valley_ref):
-           x_graph_ref = x_graph[i]+shift_Ar_peak
-           x_graph_new_ref.append(x_graph_ref) 
-          else:
-            x_graph_new_ref.append(x_graph[i])
-        
-#        for i in range(base_ref, second_valley_ref):
-        for i in range(np):
-          self.graphs[column].SetPoint(i,x_graph_new_ref[i],y_graph[i]) 
-
-        print" graph all values after shifting" 
-        for i in range(base_ref, second_valley_ref):
-          print"({},{})".format(x_graph_new_ref[i],y_graph[i]), 
-
+           self.avgraphs[column].SetPoint(i,x_new_ref[i],y_new_ref[i]) 
          
+        # for avgraphs
+        for i in range (np_graph):                
+         if i in range(base_ref +shift_peak - 20, second_valley_ref+ shift_peak+ 20) : 
+             x_ref_graph = x_graph[i]
+             y_ref_graph = y_graph[i+shift_peak]
+         else : 
+             x_ref_graph = x_graph[i]
+             y_ref_graph = y_graph[i]
+         x_new_ref_graph.append(x_ref_graph)
+         y_new_ref_graph.append(y_ref_graph)
+       
+        for i in range(np_graph):
+          self.graphs[column].SetPoint(i,x_new_ref_graph[i],y_new_ref_graph[i]) 
+
+        print" graph all values after shifting Ar peak" 
+         
+        for i in range(0, second_valley_ref-shift_peak):
+          print"({},{},{})".format(i, x_new_ref_graph[i],y_new_ref_graph[i]), 
+
+
+    def setPeakName(self,name,column,nPeak,peakName):
+        if nPeak == -1:
+         nPeak = len(self.peaks[column])
+        for i in range(nPeak):
+          print"*****************************" 
+          print" peakname here ", peakName[i]
+          print"*****************************" 
+          self.peakNames[column][i] = peakName[i]
+ 
+        #else:
+        # self.peakNames[column][i] = peakName 

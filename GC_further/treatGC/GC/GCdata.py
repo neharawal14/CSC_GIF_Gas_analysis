@@ -38,22 +38,22 @@ class GCdata(object):
         self.sums      = {}
         self.yHisto    = {}
         self.text_file = open('scaling_values.txt',"a")
-        try:
-            with open(fname, 'r') as f:
-                read_data = f.readlines()
-                f.closed
-        except:
-            print "can't open file ", fname, "exiting..."
-            exit()
-            
-        N = len(read_data[0].split(", "))
-        if(N<=1):
-            print "less than two column in file ", fname, ", exiting..."
-            exit()
-        if(N>4):
-            print "more than tree data columns in file ", fname, ", will do only three of them..."
-            N=4
-        
+#        try:
+#            with open(fname, 'r') as f:
+#                read_data = f.readlines()
+#                f.closed
+#        except:
+#            print "can't open file ", fname, "exiting..."
+#            exit()
+#            
+#        N = len(read_data[0].split(", "))
+#        if(N<=1):
+#            print "less than two column in file ", fname, ", exiting..."
+#            exit()
+#        if(N>4):
+#            print "more than tree data columns in file ", fname, ", will do only three of them..."
+#            N=4
+#        
         for i in range (0,N-1):
             #self.names will be A B C
             self.multi[self.names[i]]=TMultiGraph()
